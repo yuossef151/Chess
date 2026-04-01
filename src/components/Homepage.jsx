@@ -482,7 +482,7 @@ export default function Homepage() {
   return (
     <>
       <div className="flex flex-col md:flex-row justify-center items-center py-4 md:py-7 bg-amber-300">
-        <div className="flex items-center gap-5">
+        <div className="flex items-center flex-col lg:flex-row gap-5">
           <div className="flex flex-col gap-5">
             <div className="flex justify-between px-10 w-full">
               <div className="flex flex-col items-center">
@@ -649,7 +649,7 @@ export default function Homepage() {
               </span>
             </div>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex lg:flex-col gap-2">
             <button
               className="py-1 px-5 sm:py-2 sm:px-10 rounded-2xl mt-2 sm:mt-5 bg-green-400 text-sm sm:text-base"
               onClick={() => {
