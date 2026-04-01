@@ -4,7 +4,7 @@ import Homepage from "../components/Homepage";
 export default function Router() {
   return (
     <Routes>
-      <Route path="/" element={<Homepage />} />
+      <Route path="Chess" element={<Homepage />} />
     </Routes>
   )
 }
