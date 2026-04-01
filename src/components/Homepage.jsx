@@ -481,7 +481,7 @@ export default function Homepage() {
     isMoveSafe(piece, square, pieces, getValidMoves, lastMove);
   return (
     <>
-      <div className="flex flex-col md:flex-row justify-center items-center py-4 md:py-7 bg-amber-300">
+      {/* <div className="flex flex-col md:flex-row justify-center items-center py-4 md:py-7 bg-amber-300">
         <div className="flex items-center flex-col lg:flex-row gap-5">
           <div className="flex flex-col gap-5">
             <div className="flex justify-between px-10 w-full">
@@ -585,7 +585,7 @@ export default function Homepage() {
                 w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14
                 flex items-center justify-center 
                 text-xl sm:text-2xl md:text-3xl
-                ${isDark ? "bg-green-500" : "bg-white"} 
+                ${isDark ? "bg-[#b58863]" : "bg-white"} 
                 ${checkedKing === square ? "border-2 border-red-600" : ""}
                 relative
               `}
@@ -733,6 +733,241 @@ export default function Homepage() {
           </div>
         ) : (
           ""
+        )}
+      </div> */}
+
+      <div className="flex flex-col lg:flex-row justify-center items-center  py-4 md:py-7 bg-amber-300 w-full">
+        <div className="flex flex-col lg:flex-row items-center gap-10">
+          {/* LEFT SIDE (WHITE) */}
+          <div className="flex flex-col  gap-5 ">
+            <div className="flex justify-between lg:px-10 px-10 w-full">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-12 h-12  md:w-20 md:h-20 bg-[#949494] ${
+                    turn === "white" ? "lg:border-8 border-4 border-red-500" : ""
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path
+                      fill="white"
+                      d="M7.725 2.146c-1.016.756-1.289 1.953-1.239 2.59c.064.779.222 1.793.222 1.793s-.313.17-.313.854c.109 1.717.683.976.801 1.729c.284 1.814.933 1.491.933 2.481c0 1.649-.68 2.42-2.803 3.334C3.196 15.845 1 17 1 19v1h18v-1c0-2-2.197-3.155-4.328-4.072c-2.123-.914-2.801-1.684-2.801-3.334c0-.99.647-.667.932-2.481c.119-.753.692-.012.803-1.729c0-.684-.314-.854-.314-.854s.158-1.014.221-1.793c.065-.817-.398-2.561-2.3-3.096c-.333-.34-.558-.881.466-1.424c-2.24-.105-2.761 1.067-3.954 1.929"
+                    ></path>
+                  </svg>
+                </div>
+                <p className="pt-2 text-xl sm:text-2xl md:text-2xl text-white">
+                  White
+                </p>
+              </div>
+              <span className="bg-white h-min self-end py-1 lg:text-[18px] text-[14px] px-6 rounded-2xl">
+                {formatTime(whiteTime)}
+              </span>
+            </div>
+
+            {/* BOARD */}
+<div className="flex flex-col items-center scale-95 sm:scale-100 lg:scale-105">
+  {/* top letters */}
+  <div className="flex">
+    <div className="w-3 sm:w-4 md:w-5" />
+    
+    {letters.map((l, i) => (
+      <div
+        key={i}
+        className="w-8 h-4 sm:w-10 sm:h-5 md:w-12 md:h-6 lg:w-14 lg:h-7 flex items-center justify-center font-bold text-[10px] sm:text-xs md:text-sm"
+      >
+        {l}
+      </div>
+    ))}
+
+    <div className="w-3 sm:w-4 md:w-5" />
+  </div>
+
+  {/* middle */}
+  <div className="flex">
+    <div className="flex flex-col">
+      {numbers.map((n, i) => (
+        <div
+          key={i}
+          className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 flex items-center justify-center font-bold text-[10px] sm:text-xs md:text-sm"
+        >
+          {n}
+        </div>
+      ))}
+    </div>
+
+    <div className="grid grid-cols-8 border-2 border-black">
+      {Array.from({ length: size }).map((_, row) =>
+        Array.from({ length: size }).map((_, col) => {
+          const square = letters[col] + numbers[size - 1 - row];
+          const isDark = (row + col) % 2 === 1;
+          const piece = pieces.find((p) => p.position === square);
+
+          return (
+            <div
+              key={square}
+              onClick={() => {
+                if (!isGameStarted) return;
+
+                const pieceOnSquare = pieces.find(
+                  (p) => p.position === square,
+                );
+
+                if (pieceOnSquare && pieceOnSquare.color === turn) {
+                  setSelectedPiece(pieceOnSquare);
+
+                  const validMoves = getValidMoves(
+                    pieceOnSquare,
+                    col,
+                    row,
+                    pieces,
+                    lastMove,
+                    isKingInCheck,
+                    isMoveSafe,
+                  )
+                    .map(([c, r]) => letters[c] + numbers[size - 1 - r])
+                    .filter((sq) => safeMove(pieceOnSquare, sq, pieces));
+
+                  setMoves(validMoves);
+                  return;
+                }
+
+                if (selectedPiece && moves.includes(square)) {
+                  movePiece(selectedPiece, square);
+                  return;
+                }
+
+                setMoves([]);
+                setSelectedPiece(null);
+              }}
+              className={`
+                w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14
+                flex items-center justify-center
+                text-lg sm:text-xl md:text-2xl lg:text-3xl
+                ${isDark ? "bg-[#b58863]" : "bg-white"}
+                ${checkedKing === square ? "border border-red-600" : ""}
+                relative
+              `}
+            >
+              {moves.includes(square) && (
+                <div className="absolute z-20 rounded-full w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 bg-[#e908087c]" />
+              )}
+              {piece ? getPieceSymbol(piece.type, piece.color) : ""}
+            </div>
+          );
+        }),
+      )}
+    </div>
+
+    <div className="flex flex-col">
+      {numbers.map((n, i) => (
+        <div
+          key={i}
+          className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 flex items-center justify-center font-bold text-[10px] sm:text-xs md:text-sm"
+        >
+          {n}
+        </div>
+      ))}
+    </div>
+  </div>
+
+  {/* bottom letters */}
+  <div className="flex">
+    <div className="w-3 sm:w-4 md:w-5" />
+
+    {letters.map((l, i) => (
+      <div
+        key={i}
+        className="w-8 h-4 sm:w-10 sm:h-5 md:w-12 md:h-6 lg:w-14 lg:h-7 flex items-center justify-center font-bold text-[10px] sm:text-xs md:text-sm"
+      >
+        {l}
+      </div>
+    ))}
+
+    <div className="w-3 sm:w-4 md:w-5" />
+  </div>
+</div>
+
+            {/* BLACK */}
+            <div className="flex justify-between lg:px-10 px-10 w-full">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-12 h-12 sm:w-16 sm:h-20 md:w-20 md:h-20 bg-[#949494] ${
+                    turn === "white" ? "" : "lg:border-8 border-4 border-red-500"
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path
+                      fill="black"
+                      d="M7.725 2.146c-1.016.756-1.289 1.953-1.239 2.59c.064.779.222 1.793.222 1.793s-.313.17-.313.854c.109 1.717.683.976.801 1.729c.284 1.814.933 1.491.933 2.481c0 1.649-.68 2.42-2.803 3.334C3.196 15.845 1 17 1 19v1h18v-1c0-2-2.197-3.155-4.328-4.072c-2.123-.914-2.801-1.684-2.801-3.334c0-.99.647-.667.932-2.481c.119-.753.692-.012.803-1.729c0-.684-.314-.854-.314-.854s.158-1.014.221-1.793c.065-.817-.398-2.561-2.3-3.096c-.333-.34-.558-.881.466-1.424c-2.24-.105-2.761 1.067-3.954 1.929"
+                    ></path>
+                  </svg>
+                </div>
+                <p className="pt-2 text-xl sm:text-2xl md:text-2xl text-black">
+                  Black
+                </p>
+              </div>
+              <span className="bg-white h-min  py-1 lg:text-[18px] text-[14px] px-6 rounded-2xl">
+                {formatTime(blackTime)}
+              </span>
+            </div>
+          </div>
+
+          {/* BUTTONS */}
+          <div className="flex flex-row lg:flex-col gap-2">
+            <button
+              className="py-1 px-4 sm:py-2 sm:px-8 md:px-10 rounded-2xl bg-green-400 text-sm sm:text-base"
+              onClick={() => setIsGameStarted(true)}
+            >
+              start
+            </button>
+
+            <button
+              className="py-1 px-4 sm:py-2 sm:px-8 md:px-10 rounded-2xl bg-green-400 text-sm sm:text-base"
+              onClick={() => resetGame()}
+            >
+              reset
+            </button>
+          </div>
+        </div>
+
+        {/* PROMOTION */}
+        {promotion && (
+          <div className="fixed inset-0 flex justify-center items-center bg-black/40">
+            <div className="bg-white p-4 sm:p-6 rounded-lg text-center">
+              <p className="mb-4 font-bold text-base sm:text-lg">
+                اختار القطعة
+              </p>
+              <div className="flex gap-3 sm:gap-4 text-2xl sm:text-3xl md:text-4xl">
+                <button onClick={() => handlePromotion("queen")}>♛</button>
+                <button onClick={() => handlePromotion("rook")}>♜</button>
+                <button onClick={() => handlePromotion("bishop")}>♝</button>
+                <button onClick={() => handlePromotion("knight")}>♞</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CHECKMATE FIXED CENTER */}
+        {mate === true && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/40">
+            <div className="w-[85%] sm:w-[60%] md:w-[40%] lg:w-[30%] bg-white rounded-xl p-4 sm:p-6 md:p-8 flex flex-col items-center gap-4 text-center shadow-xl">
+              <p className="text-lg sm:text-xl md:text-2xl font-bold">
+                Check Mate
+              </p>
+              <p className="text-base sm:text-lg md:text-xl">{win} wins</p>
+
+              <button
+                className="py-2 px-6 sm:px-8 bg-green-500 rounded-2xl text-sm sm:text-base"
+                onClick={() => {
+                  resetGame();
+                  setWhiteTime(mytime);
+                  setBlackTime(mytime);
+                  setmate(false);
+                }}
+              >
+                play again
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </>
