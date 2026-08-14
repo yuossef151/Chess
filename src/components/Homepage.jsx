@@ -260,7 +260,7 @@ export default function Homepage() {
         <div className="flex flex-col justify-between w-full lg:w-72 gap-6">
           
           <div className="text-center lg:text-left">
-            <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-3xl font-extrabold bg-linear-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
               Chess Arena
             </h1>
             <p className="text-sm text-slate-400 mt-1">المواجهة الكلاسيكية المباشرة</p>
@@ -324,7 +324,7 @@ export default function Homepage() {
           <div className="flex flex-row lg:flex-col gap-3">
             {!isGameStarted ? (
               <button
-                className="flex-1 py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold shadow-lg shadow-green-600/30 transition-all transform active:scale-95 text-center cursor-pointer"
+                className="flex-1 py-3 px-6 rounded-2xl bg-linear-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold shadow-lg shadow-green-600/30 transition-all transform active:scale-95 text-center cursor-pointer"
                 onClick={() => setIsGameStarted(true)}
               >
                 بدء اللعب
@@ -459,7 +459,7 @@ export default function Homepage() {
               </p>
             </div>
             <button
-              className="w-full py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-2xl shadow-lg transition transform active:scale-95 cursor-pointer"
+              className="w-full py-3 bg-linear-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-2xl shadow-lg transition transform active:scale-95 cursor-pointer"
               onClick={() => {
                 resetGame();
                 setWhiteTime(mytime);
