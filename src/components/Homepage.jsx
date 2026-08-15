@@ -4,9 +4,28 @@ import { isKingInCheck, isCheckmate, isMoveSafe } from "./chess/rules";
 import { getPieceSymbol } from "./chess/utils";
 import { size, letters, numbers } from "./chess/constants";
 
+const sounds = {
+  self: new Audio(new URL("/public/ms/move-self.mp3", import.meta.url).href),
+  capture: new Audio(new URL("/public/ms/capture.mp3", import.meta.url).href),
+  check: new Audio(new URL("/public/ms/move-check.mp3", import.meta.url).href),
+  end: new Audio(new URL("/public/ms/game-end.mp3", import.meta.url).href),
+  castle: new Audio(new URL("/public/ms/castle.mp3", import.meta.url).href),
+};
+
+function playAudio(type) {
+  const sound = sounds[type] || sounds.self;
+  try {
+    sound.currentTime = 0;
+    sound.play().catch((e) => {
+      console.warn("Autoplay blocked or audio error:", e);
+    });
+  } catch (error) {
+    console.error("Audio play error:", error);
+  }
+}
+
 export default function Homepage() {
   const initialPieces = [
-    // قطع الأسود (الصف الثامن 8)
     { id: "rook1", type: "rook", position: "A8", color: "black", hasMoved: false },
     { id: "knight1", type: "knight", position: "B8", color: "black", hasMoved: false },
     { id: "bishop1", type: "bishop", position: "C8", color: "black", hasMoved: false },
@@ -24,7 +43,6 @@ export default function Homepage() {
     { id: "pawn7", type: "pawn", position: "G7", color: "black", hasMoved: false },
     { id: "pawn8", type: "pawn", position: "H7", color: "black", hasMoved: false },
 
-    // قطع الأبيض (الصف الأول 1)
     { id: "rook3", type: "rook", position: "A1", color: "white", hasMoved: false },
     { id: "knight3", type: "knight", position: "B1", color: "white", hasMoved: false },
     { id: "bishop3", type: "bishop", position: "C1", color: "white", hasMoved: false },
@@ -53,6 +71,7 @@ export default function Homepage() {
   const [lastMove, setLastMove] = useState(null);
   const [checkedKing, setCheckedKing] = useState(null);
   const [mate, setmate] = useState(false);
+  const [showWinModal, setShowWinModal] = useState(false);
   const [win, setwin] = useState();
   
   const savedMyTime = JSON.parse(localStorage.getItem("myTime")) || 600;
@@ -69,8 +88,20 @@ export default function Homepage() {
   const checkMate = (color, pieces) => isCheckmate(color, pieces, lastMove);
   const safeMove = (piece, square, pieces) => isMoveSafe(piece, square, pieces, lastMove);
 
+  function triggerCheckmateSequence(winningColor, kingPosition) {
+    setwin(winningColor);
+    setmate(true);
+    setCheckedKing(kingPosition);
+    playAudio("end");
+
+    setTimeout(() => {
+      setShowWinModal(true);
+    }, 1500);
+  }
+
   function handlePromotion(choice) {
     const { piece, targetSquare } = promotion;
+    const isCapture = pieces.some((p) => p.position === targetSquare);
 
     setPieces((prev) => {
       let newPieces = prev
@@ -83,12 +114,13 @@ export default function Homepage() {
       const king = newPieces.find((p) => p.type === "king" && p.color === nextTurn);
 
       if (checkMate(nextTurn, newPieces)) {
-        setwin(piece.color);
-        setmate(true);
+        triggerCheckmateSequence(piece.color, king.position);
       } else if (checkKing(newPieces, nextTurn)) {
         setCheckedKing(king.position);
+        playAudio("check");
       } else {
         setCheckedKing(null);
+        playAudio(isCapture ? "capture" : "self");
       }
 
       return newPieces;
@@ -103,6 +135,8 @@ export default function Homepage() {
   function movePiece(piece, targetSquare) {
     const from = piece.position;
     let enPassantCaptureId = null;
+    const targetPiece = pieces.find((p) => p.position === targetSquare);
+    let isCapture = !!targetPiece;
 
     if (piece.type === "pawn" && lastMove) {
       const enemy = lastMove.piece;
@@ -126,12 +160,14 @@ export default function Homepage() {
 
           if (isDiagonal && isEmpty && isAdjacent) {
             enPassantCaptureId = enemy.id;
+            isCapture = true;
           }
         }
       }
     }
 
-    setLastMove({ piece, from, to: targetSquare });
+    const updatedLastMove = { piece, from, to: targetSquare };
+    setLastMove(updatedLastMove);
 
     if (piece.type === "pawn") {
       const reachedEnd =
@@ -143,6 +179,11 @@ export default function Homepage() {
         return;
       }
     }
+
+    const isCastlingMove =
+      piece.type === "king" &&
+      piece.position === (piece.color === "white" ? "E1" : "E8") &&
+      (targetSquare === "G1" || targetSquare === "C1" || targetSquare === "G8" || targetSquare === "C8");
 
     setPieces((prev) => {
       let newPieces = [...prev];
@@ -159,22 +200,6 @@ export default function Homepage() {
         p.id === piece.id ? { ...p, position: targetSquare, hasMoved: true } : p
       );
 
-      const nextTurn = turn === "white" ? "black" : "white";
-      const king = newPieces.find((p) => p.type === "king" && p.color === nextTurn);
-      const isCastlingMove =
-        piece.type === "king" &&
-        piece.position === (piece.color === "white" ? "E1" : "E8") &&
-        (targetSquare === "G1" || targetSquare === "C1" || targetSquare === "G8" || targetSquare === "C8");
-
-      if (checkMate(nextTurn, newPieces)) {
-        setwin(piece.color);
-        setmate(true);
-      } else if (checkKing(newPieces, nextTurn)) {
-        setCheckedKing(king.position);
-      } else {
-        setCheckedKing(null);
-      }
-
       if (isCastlingMove) {
         const row = piece.color === "white" ? "1" : "8";
         if (targetSquare[0] === "G") {
@@ -187,6 +212,24 @@ export default function Homepage() {
           );
         }
       }
+
+      const nextTurn = turn === "white" ? "black" : "white";
+      const king = newPieces.find((p) => p.type === "king" && p.color === nextTurn);
+
+      if (isCheckmate(nextTurn, newPieces, updatedLastMove)) {
+        triggerCheckmateSequence(piece.color, king.position);
+      } else if (checkKing(newPieces, nextTurn)) {
+        setCheckedKing(king.position);
+        playAudio("check");
+      } else {
+        setCheckedKing(null);
+        if (isCastlingMove) {
+          playAudio("castle");
+        } else {
+          playAudio(isCapture ? "capture" : "self");
+        }
+      }
+
       return newPieces;
     });
 
@@ -207,6 +250,9 @@ export default function Homepage() {
     setMoves([]);
     setSelectedPiece(null);
     setCheckedKing(null);
+    setmate(false);
+    setShowWinModal(false);
+    setwin(null);
     setIsGameStarted(false);
     localStorage.removeItem("chessPieces");
     localStorage.removeItem("chessTurn");
@@ -415,6 +461,14 @@ export default function Homepage() {
                           <div className={`rounded-full ${piece ? "w-full h-full border-4 border-black/30" : "w-4 h-4 sm:w-5 sm:h-5 bg-black/25"}`}></div>
                         </div>
                       )}
+
+                      {mate && checkedKing === square && piece?.type === "king" && (
+                        <div className="absolute top-1 right-1 z-30 w-6 h-6 sm:w-7 sm:h-7 bg-red-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                          <span className="text-white text-xs sm:text-sm transform rotate-180 drop-shadow">
+                            {getPieceSymbol("king", piece.color)}
+                          </span>
+                        </div>
+                      )}
                       
                       <span className={`transform transition-transform hover:scale-110 ${piece?.color === "white" ? "text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]" : "text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]"}`}>
                         {piece ? getPieceSymbol(piece.type, piece.color) : ""}
@@ -444,28 +498,21 @@ export default function Homepage() {
         </div>
       )}
 
-      {(mate === true || whiteTime === 0 || blackTime === 0) && (
+      {showWinModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-50 animate-fadeIn">
           <div className="w-[90%] sm:w-[400px] bg-slate-800 border border-slate-700 rounded-3xl p-6 sm:p-8 flex flex-col items-center gap-5 text-center shadow-2xl">
             <div className="w-16 h-16 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center text-3xl font-bold border border-amber-500/30">
               🏆
             </div>
             <div>
-              <h3 className="text-2xl font-black text-slate-100">
-                {mate ? "كش مات (Checkmate)!" : "انتهى الوقت!"}
-              </h3>
+              <h3 className="text-2xl font-black text-slate-100">كش مات (Checkmate)!</h3>
               <p className="text-base text-amber-400 font-semibold mt-1">
-                {mate ? `${win} يفوز باللعبة!` : (whiteTime === 0 ? "اللاعب الأسود يفوز بالوقت!" : "اللاعب الأبيض يفوز بالوقت!")}
+                {win === "white" ? "اللاعب الأبيض" : "اللاعب الأسود"} يفوز باللعبة!
               </p>
             </div>
             <button
               className="w-full py-3 bg-linear-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-2xl shadow-lg transition transform active:scale-95 cursor-pointer"
-              onClick={() => {
-                resetGame();
-                setWhiteTime(mytime);
-                setBlackTime(mytime);
-                setmate(false);
-              }}
+              onClick={resetGame}
             >
               العب مرة أخرى
             </button>
