@@ -391,10 +391,10 @@ export default function Homepage() {
 
         </div>
 
-        <div className="flex flex-col items-center bg-slate-900/60 p-4 sm:p-6 rounded-3xl border border-slate-700 shadow-inner">
+<div className="flex flex-col items-center bg-slate-900/60 p-2 sm:p-6 rounded-3xl border border-slate-700 shadow-inner w-full max-w-lg mx-auto">
           
-          <div className="rounded-2xl overflow-hidden border-4 border-slate-700 shadow-2xl bg-[#769656]">
-            <div className="grid grid-cols-8">
+          <div className="rounded-2xl overflow-hidden border-4 border-slate-700 shadow-2xl bg-[#769656] w-full aspect-square">
+            <div className="grid grid-cols-8 w-full h-full">
               {Array.from({ length: size }).map((_, row) =>
                 Array.from({ length: size }).map((_, col) => {
                   const square = letters[col] + numbers[row];
@@ -435,9 +435,9 @@ export default function Homepage() {
                         setSelectedPiece(null);
                       }}
                       className={`
-                        w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20
+                        w-full h-full
                         flex items-center justify-center
-                        text-3xl sm:text-4xl md:text-5xl
+                        text-2xl sm:text-4xl md:text-5xl
                         cursor-pointer transition-colors relative select-none
                         ${isDark ? "bg-[#769656]" : "bg-[#eeeed2]"}
                         ${isSelected ? "bg-amber-400/80!" : ""}
@@ -445,32 +445,32 @@ export default function Homepage() {
                       `}
                     >
                       {row === 7 && (
-                        <span className={`absolute bottom-0.5 right-1 text-[10px] sm:text-xs font-bold pointer-events-none ${isDark ? "text-[#eeeed2]/80" : "text-[#769656]/90"}`}>
+                        <span className={`absolute bottom-0.5 right-1 text-[9px] sm:text-xs font-bold pointer-events-none ${isDark ? "text-[#eeeed2]/80" : "text-[#769656]/90"}`}>
                           {letters[col]}
                         </span>
                       )}
 
                       {col === 7 && (
-                        <span className={`absolute top-0.5 left-1 text-[10px] sm:text-xs font-bold pointer-events-none ${isDark ? "text-[#eeeed2]/80" : "text-[#769656]/90"}`}>
+                        <span className={`absolute top-0.5 left-1 text-[9px] sm:text-xs font-bold pointer-events-none ${isDark ? "text-[#eeeed2]/80" : "text-[#769656]/90"}`}>
                           {numbers[row]}
                         </span>
                       )}
 
                       {isMoveTarget && (
-                        <div className="absolute z-20 rounded-full w-4 h-4 sm:w-6 sm:h-6 bg-black/20 flex items-center justify-center">
-                          <div className={`rounded-full ${piece ? "w-full h-full border-4 border-black/30" : "w-4 h-4 sm:w-5 sm:h-5 bg-black/25"}`}></div>
+                        <div className="absolute z-25 rounded-full w-3 h-3 sm:w-6 sm:h-6 bg-black/20 flex items-center justify-center">
+                          <div className={`rounded-full ${piece ? "w-full h-full border-4 border-black/30" : "w-3 h-3 sm:w-5 sm:h-5 bg-black/25"}`}></div>
                         </div>
                       )}
 
                       {mate && checkedKing === square && piece?.type === "king" && (
-                        <div className="absolute top-1 right-1 z-30 w-6 h-6 sm:w-7 sm:h-7 bg-red-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                        <div className="absolute top-1 right-1 z-30 w-5 h-5 sm:w-7 sm:h-7 bg-red-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg animate-bounce">
                           <span className="text-white text-xs sm:text-sm transform rotate-180 drop-shadow">
                             {getPieceSymbol("king", piece.color)}
                           </span>
                         </div>
                       )}
                       
-                      <span className={`transform transition-transform hover:scale-110 ${piece?.color === "white" ? "text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]" : "text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]"}`}>
+                      <span className={`absolute inset-0 flex items-center justify-center transform transition-transform hover:scale-110 ${piece?.color === "white" ? "text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]" : "text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]"}`}>
                         {piece ? getPieceSymbol(piece.type, piece.color) : ""}
                       </span>
                     </div>
