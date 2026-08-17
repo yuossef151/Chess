@@ -598,10 +598,16 @@ export default function Homepage() {
                         )}
 
                         {isMoveTarget && (
-                          <div className="absolute z-25 rounded-full w-3 h-3 sm:w-6 sm:h-6 bg-black/20 flex items-center justify-center">
-                            <div className={`rounded-full ${piece ? "w-full h-full border-4 border-black/30" : "w-3 h-3 sm:w-5 sm:h-5 bg-black/25"}`}></div>
-                          </div>
-                        )}
+  <div className="absolute inset-0 z-25 flex items-center justify-center pointer-events-none">
+    {piece ? (
+      // لو المربع فيه قطعة (لأكلها): عمل إطار دائري أو حلقة محيطة بالمربع/القطعة
+      <div className="absolute inset-1 rounded-2xl border-4 border-black/20 bg-black/10"></div>
+    ) : (
+      // لو المربع فارغ: النقطة الدائرية العادية
+      <div className="w-3 h-3 sm:w-5 sm:h-5 rounded-full bg-black/25"></div>
+    )}
+  </div>
+)}
 
                         {mate && checkedKing === square && piece?.type === "king" && (
                           <div className="absolute top-1 right-1 z-30 w-5 h-5 sm:w-7 sm:h-7 bg-red-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg animate-bounce">
