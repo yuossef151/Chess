@@ -384,7 +384,7 @@ export default function Homepage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-4 md:p-6 font-sans">
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center  md:p-6 font-sans">
       
       {!isGameStarted ? (
         // شاشة الإعدادات فقط قبل بدء اللعب (بحجم الموبايل)
@@ -452,7 +452,7 @@ export default function Homepage() {
 
           <div className="flex flex-col gap-3">
             {/* اللاعب الأسود */}
-            <div className={`flex items-center justify-between p-3 rounded-2xl border ${turn === "black" ? "bg-slate-700/90 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-900/40 border-slate-700/50"}`}>
+            <div className={`flex items-center justify-between p-3  rounded-2xl border ${turn === "black" ? "bg-slate-700/90 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-900/40 border-slate-700/50"}`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center border border-slate-600">
                   <svg className="w-6 h-6 fill-black" viewBox="0 0 20 20">
@@ -470,7 +470,7 @@ export default function Homepage() {
             </div>
 
             {/* اللاعب الأبيض */}
-            <div className={`flex items-center justify-between p-3 rounded-2xl border ${turn === "white" ? "bg-slate-700/90 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-900/40 border-slate-700/50"}`}>
+            <div className={`flex items-center justify-between p-3  rounded-2xl border ${turn === "white" ? "bg-slate-700/90 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-900/40 border-slate-700/50"}`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-slate-400">
                   <svg className="w-6 h-6 fill-amber-50" viewBox="0 0 20 20">
@@ -512,7 +512,8 @@ export default function Homepage() {
         <div className="flex flex-col items-center gap-3 w-full max-w-lg mx-auto">
           
           {/* معلومات ووقت اللاعب الأسود (فوق القطع السوداء مباشرة) */}
-          <div className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 border ${turn === "black" ? "bg-slate-800 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-800/60 border-slate-700/50"}`}>
+         <div className="m-4 w-[90%]">
+          <div className={`w-full flex items-center justify-between p-3  rounded-2xl transition-all duration-300 border ${turn === "black" ? "bg-slate-800 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-800/60 border-slate-700/50"}`}>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center border border-slate-600">
                 <svg className="w-5 h-5 fill-black" viewBox="0 0 20 20">
@@ -528,10 +529,12 @@ export default function Homepage() {
               {formatTime(blackTime)}
             </div>
           </div>
+         </div>
+
 
           {/* البوردة */}
-          <div className="flex flex-col items-center bg-slate-900/60 p-2 sm:p-4 rounded-3xl border border-slate-700 shadow-inner w-full">
-            <div className="rounded-2xl overflow-hidden border-4 border-slate-700 shadow-2xl bg-[#769656] w-full aspect-square">
+          <div className="flex flex-col items-center  rounded-3xl    w-full">
+            <div className=" overflow-hidden w-full  aspect-square">
               <div className="grid grid-cols-8 w-full h-full">
                 {Array.from({ length: size }).map((_, row) =>
                   Array.from({ length: size }).map((_, col) => {
@@ -575,7 +578,7 @@ export default function Homepage() {
                         className={`
                           w-full h-full
                           flex items-center justify-center
-                          text-2xl sm:text-4xl md:text-5xl
+                          text-4xl sm:text-4xl md:text-5xl
                           cursor-pointer transition-colors relative select-none
                           ${isDark ? "bg-[#769656]" : "bg-[#eeeed2]"}
                           ${isSelected ? "bg-amber-400/80!" : ""}
@@ -603,13 +606,23 @@ export default function Homepage() {
                         {mate && checkedKing === square && piece?.type === "king" && (
                           <div className="absolute top-1 right-1 z-30 w-5 h-5 sm:w-7 sm:h-7 bg-red-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg animate-bounce">
                             <span className="text-white text-xs sm:text-sm transform rotate-180 drop-shadow">
-                              {getPieceSymbol("king", piece.color)}
+                                <img 
+    src={getPieceSymbol("king", piece.color)} 
+    alt={`${piece.color} ${piece.type}`} 
+    className="w-4/5 h-4/5 object-contain drop-shadow-md select-none pointer-events-none" 
+  />
                             </span>
                           </div>
                         )}
                         
                         <span className={`absolute inset-0 flex items-center justify-center transform transition-transform hover:scale-110 ${piece?.color === "white" ? "text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]" : "text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]"}`}>
-                          {piece ? getPieceSymbol(piece.type, piece.color) : ""}
+                          {piece ? (
+  <img 
+    src={getPieceSymbol(piece.type, piece.color)} 
+    alt={`${piece.color} ${piece.type}`} 
+    className="w-4/5 h-4/5 object-contain drop-shadow-md select-none pointer-events-none" 
+  />
+) : ""}
                         </span>
                       </div>
                     );
@@ -620,6 +633,7 @@ export default function Homepage() {
           </div>
 
           {/* معلومات ووقت اللاعب الأبيض (تحت البอร์ดة وفوق القطع البيضاء مباشرة) */}
+          <div className="m-4 w-[90%]">
           <div className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 border ${turn === "white" ? "bg-slate-800 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-800/60 border-slate-700/50"}`}>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-black flex items-center justify-center border border-slate-400">
@@ -636,14 +650,18 @@ export default function Homepage() {
               {formatTime(whiteTime)}
             </div>
           </div>
+          </div>
+
 
           {/* زر إنهاء أو إعادة ضبط اللعبة أثناء اللعب */}
-          <button
+<div className="m-4 w-[90%]">
+            <button
             className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold border border-slate-700 transition-all text-center cursor-pointer text-sm mt-1"
             onClick={resetGame}
           >
             إنهاء العودة للإعدادات
           </button>
+</div>
         </div>
       )}
 
