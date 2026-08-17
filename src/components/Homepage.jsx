@@ -142,7 +142,6 @@ export default function Homepage() {
       return newPieces;
     });
 
-    // في وضع وقت النقلة، الوقت المتبقي يُضاف لنفس اللاعب في نقلته القادمة
     if (timerMode === "move") {
       const remainingTime = movingColor === "white" ? whiteTime : blackTime;
       const bonus = Math.max(0, remainingTime);
@@ -263,7 +262,6 @@ export default function Homepage() {
     });
 
     if (piece.type !== "pawn" || (targetSquare[1] !== "8" && targetSquare[1] !== "1")) {
-      // في وضع وقت النقلة، الوقت المتبقي يُضاف لنفس اللاعب في نقلته القادمة
       if (timerMode === "move") {
         const remainingTime = movingColor === "white" ? whiteTime : blackTime;
         const bonus = Math.max(0, remainingTime);
@@ -296,6 +294,7 @@ export default function Homepage() {
     setIsGameStarted(false);
     localStorage.removeItem("chessPieces");
     localStorage.removeItem("chessTurn");
+    localStorage.removeItem("isGameStarted");
   };
 
   const handleTimerModeChange = (mode) => {
@@ -387,78 +386,73 @@ export default function Homepage() {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-4 md:p-6 font-sans">
       
-      <div className="w-full max-w-6xl bg-slate-800/85 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-700/60 p-4 sm:p-6 md:p-8 flex flex-col lg:flex-row items-center justify-between gap-8">
-        
-        <div className="flex flex-col justify-between w-full lg:w-72 gap-6">
-          
-          <div className="text-center lg:text-left">
-            <h1 className="text-2xl sm:text-3xl font-extrabold bg-linear-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+      {!isGameStarted ? (
+        // شاشة الإعدادات فقط قبل بدء اللعب (بحجم الموبايل)
+        <div className="w-full max-w-md bg-slate-800/85 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-700/60 p-5 sm:p-6 flex flex-col gap-5">
+          <div className="text-center">
+            <h1 className="text-2xl font-extrabold bg-linear-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
               Chess Arena
             </h1>
-            <p className="text-sm text-slate-400 mt-1">المواجهة الكلاسيكية المباشرة</p>
+            <p className="text-xs text-slate-400 mt-1">اختار الإعدادات وابدأ المواجهة</p>
           </div>
 
-          {!isGameStarted && (
-            <div className="flex flex-col gap-3 bg-slate-900/50 p-3 rounded-2xl border border-slate-700/50">
-              
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-slate-400 font-semibold">نوع التوقيت:</label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleTimerModeChange("match")}
-                    className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-xl border transition cursor-pointer ${timerMode === "match" ? "bg-amber-500 text-slate-950 border-amber-400 shadow" : "bg-slate-800 text-slate-300 border-slate-700"}`}
-                  >
-                    وقت المباراة
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleTimerModeChange("move")}
-                    className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-xl border transition cursor-pointer ${timerMode === "move" ? "bg-amber-500 text-slate-950 border-amber-400 shadow" : "bg-slate-800 text-slate-300 border-slate-700"}`}
-                  >
-                    وقت النقلة
-                  </button>
-                </div>
+          <div className="flex flex-col gap-3 bg-slate-900/50 p-3.5 rounded-2xl border border-slate-700/50">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-slate-400 font-semibold">نوع التوقيت:</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleTimerModeChange("match")}
+                  className={`flex-1 py-2 px-2 text-xs font-bold rounded-xl border transition cursor-pointer ${timerMode === "match" ? "bg-amber-500 text-slate-950 border-amber-400 shadow" : "bg-slate-800 text-slate-300 border-slate-700"}`}
+                >
+                  وقت المباراة
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTimerModeChange("move")}
+                  className={`flex-1 py-2 px-2 text-xs font-bold rounded-xl border transition cursor-pointer ${timerMode === "move" ? "bg-amber-500 text-slate-950 border-amber-400 shadow" : "bg-slate-800 text-slate-300 border-slate-700"}`}
+                >
+                  وقت النقلة
+                </button>
               </div>
-
-              {timerMode === "match" ? (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-slate-400 font-semibold">:وقت البداية (لكل لاعب)</label>
-                  <select
-                    value={matchTimeSetting}
-                    onChange={(e) => handleMatchTimeChange(Number(e.target.value))}
-                    className="bg-slate-800 text-slate-200 text-sm font-bold p-2 rounded-xl border border-slate-600 focus:outline-none cursor-pointer"
-                  >
-                    <option value={60}>دقيقة واحدة (رصاصي)</option>
-                    <option value={180}>3 دقائق (خاطف)</option>
-                    <option value={300}>5 دقائق (خاطف)</option>
-                    <option value={600}>10 دقائق (سريع)</option>
-                    <option value={900}>15 دقيقة</option>
-                    <option value={1800}>30 دقيقة (كلاسيكي)</option>
-                  </select>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-slate-400 font-semibold">:وقت النقلة (لكل نقلة)</label>
-                  <select
-                    value={moveTimeSetting}
-                    onChange={(e) => handleMoveTimeChange(Number(e.target.value))}
-                    className="bg-slate-800 text-slate-200 text-sm font-bold p-2 rounded-xl border border-slate-600 focus:outline-none cursor-pointer"
-                  >
-                    <option value={30}>30 ثانية للنقلة</option>
-                    <option value={60}>دقيقة واحدة للنقلة</option>
-                    <option value={120}>دقيقتان للنقلة</option>
-                    <option value={300}>5 دقائق للنقلة</option>
-                  </select>
-                </div>
-              )}
-
             </div>
-          )}
+
+            {timerMode === "match" ? (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-slate-400 font-semibold">وقت البداية (لكل لاعب):</label>
+                <select
+                  value={matchTimeSetting}
+                  onChange={(e) => handleMatchTimeChange(Number(e.target.value))}
+                  className="bg-slate-800 text-slate-200 text-sm font-bold p-2.5 rounded-xl border border-slate-600 focus:outline-none cursor-pointer"
+                >
+                  <option value={60}>دقيقة واحدة (رصاصي)</option>
+                  <option value={180}>3 دقائق (خاطف)</option>
+                  <option value={300}>5 دقائق (خاطف)</option>
+                  <option value={600}>10 دقائق (سريع)</option>
+                  <option value={900}>15 دقيقة</option>
+                  <option value={1800}>30 دقيقة (كلاسيكي)</option>
+                </select>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-slate-400 font-semibold">وقت النقلة (لكل نقلة):</label>
+                <select
+                  value={moveTimeSetting}
+                  onChange={(e) => handleMoveTimeChange(Number(e.target.value))}
+                  className="bg-slate-800 text-slate-200 text-sm font-bold p-2.5 rounded-xl border border-slate-600 focus:outline-none cursor-pointer"
+                >
+                  <option value={30}>30 ثانية للنقلة</option>
+                  <option value={60}>دقيقة واحدة للنقلة</option>
+                  <option value={120}>دقيقتان للنقلة</option>
+                  <option value={300}>5 دقائق للنقلة</option>
+                </select>
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-col gap-3">
-            
-            <div className={`flex items-center justify-between p-3 rounded-2xl transition-all duration-300 border ${turn === "black" ? "bg-slate-700/90 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-900/40 border-slate-700/50"}`}>
+            {/* اللاعب الأسود */}
+            <div className={`flex items-center justify-between p-3 rounded-2xl border ${turn === "black" ? "bg-slate-700/90 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-900/40 border-slate-700/50"}`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center border border-slate-600">
                   <svg className="w-6 h-6 fill-black" viewBox="0 0 20 20">
@@ -466,16 +460,17 @@ export default function Homepage() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm sm:text-base text-slate-300">اللاعب الأسود</h3>
-                  <span className="text-xs text-slate-400">{turn === "black" ? "دور اللعب..." : "منتظر"}</span>
+                  <h3 className="font-bold text-sm text-slate-300">اللاعب الأسود</h3>
+                  <span className="text-xs text-slate-400">منتظر</span>
                 </div>
               </div>
-              <div className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 font-mono text-sm sm:text-base text-amber-400">
+              <div className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 font-mono text-sm text-amber-400">
                 {formatTime(blackTime)}
               </div>
             </div>
 
-            <div className={`flex items-center justify-between p-3 rounded-2xl transition-all duration-300 border ${turn === "white" ? "bg-slate-700/90 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-900/40 border-slate-700/50"}`}>
+            {/* اللاعب الأبيض */}
+            <div className={`flex items-center justify-between p-3 rounded-2xl border ${turn === "white" ? "bg-slate-700/90 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-900/40 border-slate-700/50"}`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-slate-400">
                   <svg className="w-6 h-6 fill-amber-50" viewBox="0 0 20 20">
@@ -483,137 +478,174 @@ export default function Homepage() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm sm:text-base text-white">اللاعب الأبيض</h3>
-                  <span className="text-xs text-slate-400">{turn === "white" ? "دور اللعب..." : "منتظر"}</span>
+                  <h3 className="font-bold text-sm text-white">اللاعب الأبيض</h3>
+                  <span className="text-xs text-slate-400">دور اللعب...</span>
                 </div>
               </div>
-              <div className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 font-mono text-sm sm:text-base text-amber-400">
+              <div className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 font-mono text-sm text-amber-400">
                 {formatTime(whiteTime)}
               </div>
             </div>
-
           </div>
 
-          <div className="flex flex-row lg:flex-col gap-3">
-            {!isGameStarted ? (
-              <button
-                className="flex-1 py-3 px-6 rounded-2xl bg-linear-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold shadow-lg shadow-green-600/30 transition-all transform active:scale-95 text-center cursor-pointer"
-                onClick={() => {
-                  setIsGameStarted(true);
-                  setWhiteTime(currentTimeSetting);
-                  setBlackTime(currentTimeSetting);
-                }}
-              >
-                بدء اللعب
-              </button>
-            ) : (
-              <div className="flex-1 py-3 px-6 rounded-2xl bg-slate-700/50 text-emerald-400 font-bold border border-emerald-500/30 text-center flex items-center justify-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                الجولة جارية
-              </div>
-            )}
+          <div className="flex gap-3 mt-1">
             <button
-              className="flex-1 py-3 px-6 rounded-2xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold border border-slate-600 transition-all transform active:scale-95 text-center cursor-pointer"
+              className="flex-1 py-3 px-6 rounded-2xl bg-linear-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold shadow-lg shadow-green-600/30 transition-all transform active:scale-95 text-center cursor-pointer"
+              onClick={() => {
+                setIsGameStarted(true);
+                setWhiteTime(currentTimeSetting);
+                setBlackTime(currentTimeSetting);
+              }}
+            >
+              بدء اللعب
+            </button>
+            <button
+              className="py-3 px-4 rounded-2xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold border border-slate-600 transition-all transform active:scale-95 text-center cursor-pointer"
               onClick={resetGame}
             >
               إعادة ضبط
             </button>
           </div>
-
         </div>
-
-        <div className="flex flex-col items-center bg-slate-900/60 p-2 sm:p-6 rounded-3xl border border-slate-700 shadow-inner w-full max-w-lg mx-auto">
+      ) : (
+        // بعد بدء اللعب: تظهر البوردة ويكون وقت اللاعب فوق قطعه مباشرة
+        <div className="flex flex-col items-center gap-3 w-full max-w-lg mx-auto">
           
-          <div className="rounded-2xl overflow-hidden border-4 border-slate-700 shadow-2xl bg-[#769656] w-full aspect-square">
-            <div className="grid grid-cols-8 w-full h-full">
-              {Array.from({ length: size }).map((_, row) =>
-                Array.from({ length: size }).map((_, col) => {
-                  const square = letters[col] + numbers[row];
-                  const isDark = (row + col) % 2 === 1;
-                  const piece = pieces.find((p) => p.position === square);
-                  const isSelected = selectedPiece?.position === square;
-                  const isMoveTarget = moves.includes(square);
-
-                  return (
-                    <div
-                      key={square}
-                      onClick={() => {
-                        if (!isGameStarted) return;
-                        const pieceOnSquare = pieces.find((p) => p.position === square);
-
-                        if (pieceOnSquare && pieceOnSquare.color === turn) {
-                          setSelectedPiece(pieceOnSquare);
-                          const validMoves = getValidMoves(
-                            pieceOnSquare,
-                            col,
-                            row,
-                            pieces,
-                            lastMove
-                          )
-                            .map(([c, r]) => letters[c] + numbers[r])
-                            .filter((sq) => safeMove(pieceOnSquare, sq, pieces));
-
-                          setMoves(validMoves);
-                          return;
-                        }
-
-                        if (selectedPiece && moves.includes(square)) {
-                          movePiece(selectedPiece, square);
-                          return;
-                        }
-
-                        setMoves([]);
-                        setSelectedPiece(null);
-                      }}
-                      className={`
-                        w-full h-full
-                        flex items-center justify-center
-                        text-2xl sm:text-4xl md:text-5xl
-                        cursor-pointer transition-colors relative select-none
-                        ${isDark ? "bg-[#769656]" : "bg-[#eeeed2]"}
-                        ${isSelected ? "bg-amber-400/80!" : ""}
-                        ${checkedKing === square ? "bg-red-500/80 animate-pulse" : ""}
-                      `}
-                    >
-                      {row === 7 && (
-                        <span className={`absolute bottom-0.5 right-1 text-[9px] sm:text-xs font-bold pointer-events-none ${isDark ? "text-[#eeeed2]/80" : "text-[#769656]/90"}`}>
-                          {letters[col]}
-                        </span>
-                      )}
-
-                      {col === 7 && (
-                        <span className={`absolute top-0.5 left-1 text-[9px] sm:text-xs font-bold pointer-events-none ${isDark ? "text-[#eeeed2]/80" : "text-[#769656]/90"}`}>
-                          {numbers[row]}
-                        </span>
-                      )}
-
-                      {isMoveTarget && (
-                        <div className="absolute z-25 rounded-full w-3 h-3 sm:w-6 sm:h-6 bg-black/20 flex items-center justify-center">
-                          <div className={`rounded-full ${piece ? "w-full h-full border-4 border-black/30" : "w-3 h-3 sm:w-5 sm:h-5 bg-black/25"}`}></div>
-                        </div>
-                      )}
-
-                      {mate && checkedKing === square && piece?.type === "king" && (
-                        <div className="absolute top-1 right-1 z-30 w-5 h-5 sm:w-7 sm:h-7 bg-red-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg animate-bounce">
-                          <span className="text-white text-xs sm:text-sm transform rotate-180 drop-shadow">
-                            {getPieceSymbol("king", piece.color)}
-                          </span>
-                        </div>
-                      )}
-                      
-                      <span className={`absolute inset-0 flex items-center justify-center transform transition-transform hover:scale-110 ${piece?.color === "white" ? "text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]" : "text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]"}`}>
-                        {piece ? getPieceSymbol(piece.type, piece.color) : ""}
-                      </span>
-                    </div>
-                  );
-                })
-              )}
+          {/* معلومات ووقت اللاعب الأسود (فوق القطع السوداء مباشرة) */}
+          <div className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 border ${turn === "black" ? "bg-slate-800 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-800/60 border-slate-700/50"}`}>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center border border-slate-600">
+                <svg className="w-5 h-5 fill-black" viewBox="0 0 20 20">
+                  <path d="M7.725 2.146c-1.016.756-1.289 1.953-1.239 2.59c.064.779.222 1.793.222 1.793s-.313.17-.313.854c.109 1.717.683.976.801 1.729c.284 1.814.933 1.491.933 2.481c0 1.649-.68 2.42-2.803 3.334C3.196 15.845 1 17 1 19v1h18v-1c0-2-2.197-3.155-4.328-4.072c-2.123-.914-2.801-1.684-2.801-3.334c0-.99.647-.667.932-2.481c.119-.753.692-.012.803-1.729c0-.684-.314-.854-.314-.854s.158-1.014.221-1.793c.065-.817-.398-2.561-2.3-3.096c-.333-.34-.558-.881.466-1.424c-2.24-.105-2.761 1.067-3.954 1.929"></path>
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-300">اللاعب الأسود</h3>
+                <span className="text-xs text-slate-400">{turn === "black" ? "دور اللعب..." : "منتظر"}</span>
+              </div>
+            </div>
+            <div className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 font-mono text-base text-amber-400">
+              {formatTime(blackTime)}
             </div>
           </div>
 
-        </div>
+          {/* البوردة */}
+          <div className="flex flex-col items-center bg-slate-900/60 p-2 sm:p-4 rounded-3xl border border-slate-700 shadow-inner w-full">
+            <div className="rounded-2xl overflow-hidden border-4 border-slate-700 shadow-2xl bg-[#769656] w-full aspect-square">
+              <div className="grid grid-cols-8 w-full h-full">
+                {Array.from({ length: size }).map((_, row) =>
+                  Array.from({ length: size }).map((_, col) => {
+                    const square = letters[col] + numbers[row];
+                    const isDark = (row + col) % 2 === 1;
+                    const piece = pieces.find((p) => p.position === square);
+                    const isSelected = selectedPiece?.position === square;
+                    const isMoveTarget = moves.includes(square);
 
-      </div>
+                    return (
+                      <div
+                        key={square}
+                        onClick={() => {
+                          if (!isGameStarted) return;
+                          const pieceOnSquare = pieces.find((p) => p.position === square);
+
+                          if (pieceOnSquare && pieceOnSquare.color === turn) {
+                            setSelectedPiece(pieceOnSquare);
+                            const validMoves = getValidMoves(
+                              pieceOnSquare,
+                              col,
+                              row,
+                              pieces,
+                              lastMove
+                            )
+                              .map(([c, r]) => letters[c] + numbers[r])
+                              .filter((sq) => safeMove(pieceOnSquare, sq, pieces));
+
+                            setMoves(validMoves);
+                            return;
+                          }
+
+                          if (selectedPiece && moves.includes(square)) {
+                            movePiece(selectedPiece, square);
+                            return;
+                          }
+
+                          setMoves([]);
+                          setSelectedPiece(null);
+                        }}
+                        className={`
+                          w-full h-full
+                          flex items-center justify-center
+                          text-2xl sm:text-4xl md:text-5xl
+                          cursor-pointer transition-colors relative select-none
+                          ${isDark ? "bg-[#769656]" : "bg-[#eeeed2]"}
+                          ${isSelected ? "bg-amber-400/80!" : ""}
+                          ${checkedKing === square ? "bg-red-500/80 animate-pulse" : ""}
+                        `}
+                      >
+                        {row === 7 && (
+                          <span className={`absolute bottom-0.5 right-1 text-[9px] sm:text-xs font-bold pointer-events-none ${isDark ? "text-[#eeeed2]/80" : "text-[#769656]/90"}`}>
+                            {letters[col]}
+                          </span>
+                        )}
+
+                        {col === 7 && (
+                          <span className={`absolute top-0.5 left-1 text-[9px] sm:text-xs font-bold pointer-events-none ${isDark ? "text-[#eeeed2]/80" : "text-[#769656]/90"}`}>
+                            {numbers[row]}
+                          </span>
+                        )}
+
+                        {isMoveTarget && (
+                          <div className="absolute z-25 rounded-full w-3 h-3 sm:w-6 sm:h-6 bg-black/20 flex items-center justify-center">
+                            <div className={`rounded-full ${piece ? "w-full h-full border-4 border-black/30" : "w-3 h-3 sm:w-5 sm:h-5 bg-black/25"}`}></div>
+                          </div>
+                        )}
+
+                        {mate && checkedKing === square && piece?.type === "king" && (
+                          <div className="absolute top-1 right-1 z-30 w-5 h-5 sm:w-7 sm:h-7 bg-red-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                            <span className="text-white text-xs sm:text-sm transform rotate-180 drop-shadow">
+                              {getPieceSymbol("king", piece.color)}
+                            </span>
+                          </div>
+                        )}
+                        
+                        <span className={`absolute inset-0 flex items-center justify-center transform transition-transform hover:scale-110 ${piece?.color === "white" ? "text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]" : "text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]"}`}>
+                          {piece ? getPieceSymbol(piece.type, piece.color) : ""}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* معلومات ووقت اللاعب الأبيض (تحت البอร์ดة وفوق القطع البيضاء مباشرة) */}
+          <div className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 border ${turn === "white" ? "bg-slate-800 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-800/60 border-slate-700/50"}`}>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-black flex items-center justify-center border border-slate-400">
+                <svg className="w-5 h-5 fill-amber-50" viewBox="0 0 20 20">
+                  <path d="M7.725 2.146c-1.016.756-1.289 1.953-1.239 2.59c.064.779.222 1.793.222 1.793s-.313.17-.313.854c.109 1.717.683.976.801 1.729c.284 1.814.933 1.491.933 2.481c0 1.649-.68 2.42-2.803 3.334C3.196 15.845 1 17 1 19v1h18v-1c0-2-2.197-3.155-4.328-4.072c-2.123-.914-2.801-1.684-2.801-3.334c0-.99.647-.667.932-2.481c.119-.753.692-.012.803-1.729c0-.684-.314-.854-.314-.854s.158-1.014.221-1.793c.065-.817-.398-2.561-2.3-3.096c-.333-.34-.558-.881.466-1.424c-2.24-.105-2.761 1.067-3.954 1.929"></path>
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-white">اللاعب الأبيض</h3>
+                <span className="text-xs text-slate-400">{turn === "white" ? "دور اللعب..." : "منتظر"}</span>
+              </div>
+            </div>
+            <div className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 font-mono text-base text-amber-400">
+              {formatTime(whiteTime)}
+            </div>
+          </div>
+
+          {/* زر إنهاء أو إعادة ضبط اللعبة أثناء اللعب */}
+          <button
+            className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold border border-slate-700 transition-all text-center cursor-pointer text-sm mt-1"
+            onClick={resetGame}
+          >
+            إنهاء العودة للإعدادات
+          </button>
+        </div>
+      )}
 
       {promotion && (
         <div className="fixed inset-0 flex justify-center items-center bg-black/70 backdrop-blur-sm z-50 animate-fadeIn">
