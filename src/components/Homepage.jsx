@@ -74,13 +74,22 @@ export default function Homepage() {
   const [showWinModal, setShowWinModal] = useState(false);
   const [win, setwin] = useState();
   
-  const savedMyTime = JSON.parse(localStorage.getItem("myTime")) || 600;
-  const [mytime, setMyTime] = useState(savedMyTime);
+  const savedTimerMode = localStorage.getItem("timerMode") || "match";
+  const [timerMode, setTimerMode] = useState(savedTimerMode);
+
+  const savedMatchTime = JSON.parse(localStorage.getItem("matchTime")) || 180;
+  const [matchTimeSetting, setMatchTimeSetting] = useState(savedMatchTime);
+
+  const savedMoveTime = JSON.parse(localStorage.getItem("moveTime")) || 60;
+  const [moveTimeSetting, setMoveTimeSetting] = useState(savedMoveTime);
+
+  const currentTimeSetting = timerMode === "match" ? matchTimeSetting : moveTimeSetting;
 
   const savedWhiteTime = JSON.parse(localStorage.getItem("whiteTime"));
   const savedBlackTime = JSON.parse(localStorage.getItem("blackTime"));
-  const [whiteTime, setWhiteTime] = useState(savedWhiteTime ?? mytime);
-  const [blackTime, setBlackTime] = useState(savedBlackTime ?? mytime);
+  const [whiteTime, setWhiteTime] = useState(savedWhiteTime ?? currentTimeSetting);
+  const [blackTime, setBlackTime] = useState(savedBlackTime ?? currentTimeSetting);
+  
   const savedStart = JSON.parse(localStorage.getItem("isGameStarted"));
   const [isGameStarted, setIsGameStarted] = useState(savedStart ?? false);
 
@@ -99,9 +108,16 @@ export default function Homepage() {
     }, 1500);
   }
 
+  function handleTimeOut(losingColor) {
+    const winningColor = losingColor === "white" ? "black" : "white";
+    const king = pieces.find((p) => p.type === "king" && p.color === losingColor);
+    triggerCheckmateSequence(winningColor, king ? king.position : (losingColor === "white" ? "E1" : "E8"));
+  }
+
   function handlePromotion(choice) {
     const { piece, targetSquare } = promotion;
     const isCapture = pieces.some((p) => p.position === targetSquare);
+    const movingColor = piece.color;
 
     setPieces((prev) => {
       let newPieces = prev
@@ -110,11 +126,11 @@ export default function Homepage() {
           p.id === piece.id ? { ...p, position: targetSquare, type: choice } : p
         );
 
-      const nextTurn = piece.color === "white" ? "black" : "white";
+      const nextTurn = movingColor === "white" ? "black" : "white";
       const king = newPieces.find((p) => p.type === "king" && p.color === nextTurn);
 
       if (checkMate(nextTurn, newPieces)) {
-        triggerCheckmateSequence(piece.color, king.position);
+        triggerCheckmateSequence(movingColor, king.position);
       } else if (checkKing(newPieces, nextTurn)) {
         setCheckedKing(king.position);
         playAudio("check");
@@ -126,7 +142,19 @@ export default function Homepage() {
       return newPieces;
     });
 
-    setTurn(piece.color === "white" ? "black" : "white");
+    // في وضع وقت النقلة، الوقت المتبقي يُضاف لنفس اللاعب في نقلته القادمة
+    if (timerMode === "move") {
+      const remainingTime = movingColor === "white" ? whiteTime : blackTime;
+      const bonus = Math.max(0, remainingTime);
+      if (movingColor === "white") {
+        setWhiteTime(moveTimeSetting + bonus);
+      } else {
+        setBlackTime(moveTimeSetting + bonus);
+      }
+    }
+
+    const nextTurnColor = movingColor === "white" ? "black" : "white";
+    setTurn(nextTurnColor);
     setPromotion(null);
     setMoves([]);
     setSelectedPiece(null);
@@ -134,6 +162,7 @@ export default function Homepage() {
 
   function movePiece(piece, targetSquare) {
     const from = piece.position;
+    const movingColor = piece.color;
     let enPassantCaptureId = null;
     const targetPiece = pieces.find((p) => p.position === targetSquare);
     let isCapture = !!targetPiece;
@@ -171,8 +200,8 @@ export default function Homepage() {
 
     if (piece.type === "pawn") {
       const reachedEnd =
-        (piece.color === "white" && targetSquare[1] === "8") ||
-        (piece.color === "black" && targetSquare[1] === "1");
+        (movingColor === "white" && targetSquare[1] === "8") ||
+        (movingColor === "black" && targetSquare[1] === "1");
 
       if (reachedEnd) {
         setPromotion({ piece, targetSquare });
@@ -182,7 +211,7 @@ export default function Homepage() {
 
     const isCastlingMove =
       piece.type === "king" &&
-      piece.position === (piece.color === "white" ? "E1" : "E8") &&
+      piece.position === (movingColor === "white" ? "E1" : "E8") &&
       (targetSquare === "G1" || targetSquare === "C1" || targetSquare === "G8" || targetSquare === "C8");
 
     setPieces((prev) => {
@@ -201,7 +230,7 @@ export default function Homepage() {
       );
 
       if (isCastlingMove) {
-        const row = piece.color === "white" ? "1" : "8";
+        const row = movingColor === "white" ? "1" : "8";
         if (targetSquare[0] === "G") {
           newPieces = newPieces.map((p) =>
             p.position === "H" + row ? { ...p, position: "F" + row, hasMoved: true } : p
@@ -213,11 +242,11 @@ export default function Homepage() {
         }
       }
 
-      const nextTurn = turn === "white" ? "black" : "white";
+      const nextTurn = movingColor === "white" ? "black" : "white";
       const king = newPieces.find((p) => p.type === "king" && p.color === nextTurn);
 
       if (isCheckmate(nextTurn, newPieces, updatedLastMove)) {
-        triggerCheckmateSequence(piece.color, king.position);
+        triggerCheckmateSequence(movingColor, king.position);
       } else if (checkKing(newPieces, nextTurn)) {
         setCheckedKing(king.position);
         playAudio("check");
@@ -234,7 +263,18 @@ export default function Homepage() {
     });
 
     if (piece.type !== "pawn" || (targetSquare[1] !== "8" && targetSquare[1] !== "1")) {
-      const nextTurn = turn === "white" ? "black" : "white";
+      // في وضع وقت النقلة، الوقت المتبقي يُضاف لنفس اللاعب في نقلته القادمة
+      if (timerMode === "move") {
+        const remainingTime = movingColor === "white" ? whiteTime : blackTime;
+        const bonus = Math.max(0, remainingTime);
+        if (movingColor === "white") {
+          setWhiteTime(moveTimeSetting + bonus);
+        } else {
+          setBlackTime(moveTimeSetting + bonus);
+        }
+      }
+
+      const nextTurn = movingColor === "white" ? "black" : "white";
       setTurn(nextTurn);
     }
 
@@ -245,8 +285,8 @@ export default function Homepage() {
   const resetGame = () => {
     setPieces(initialPieces);
     setTurn("white");
-    setWhiteTime(mytime);
-    setBlackTime(mytime);
+    setWhiteTime(currentTimeSetting);
+    setBlackTime(currentTimeSetting);
     setMoves([]);
     setSelectedPiece(null);
     setCheckedKing(null);
@@ -258,11 +298,30 @@ export default function Homepage() {
     localStorage.removeItem("chessTurn");
   };
 
-  const handleTimeChange = (newTime) => {
-    setMyTime(newTime);
+  const handleTimerModeChange = (mode) => {
+    setTimerMode(mode);
+    localStorage.setItem("timerMode", mode);
+    const newTime = mode === "match" ? matchTimeSetting : moveTimeSetting;
     setWhiteTime(newTime);
     setBlackTime(newTime);
-    localStorage.setItem("myTime", JSON.stringify(newTime));
+  };
+
+  const handleMatchTimeChange = (time) => {
+    setMatchTimeSetting(time);
+    localStorage.setItem("matchTime", JSON.stringify(time));
+    if (timerMode === "match") {
+      setWhiteTime(time);
+      setBlackTime(time);
+    }
+  };
+
+  const handleMoveTimeChange = (time) => {
+    setMoveTimeSetting(time);
+    localStorage.setItem("moveTime", JSON.stringify(time));
+    if (timerMode === "move") {
+      setWhiteTime(time);
+      setBlackTime(time);
+    }
   };
 
   useEffect(() => {
@@ -282,15 +341,42 @@ export default function Homepage() {
   useEffect(() => {
     if (!isGameStarted) return;
     if (mate) return;
-    if (whiteTime === 0 || blackTime === 0) return;
+    if (whiteTime === 0) {
+      handleTimeOut("white");
+      return;
+    }
+    if (blackTime === 0) {
+      handleTimeOut("black");
+      return;
+    }
 
     const timer = setInterval(() => {
-      setWhiteTime((w) => (turn === "white" ? Math.max(w - 1, 0) : w));
-      setBlackTime((b) => (turn === "black" ? Math.max(b - 1, 0) : b));
+      setWhiteTime((w) => {
+        if (turn === "white") {
+          const nextW = w - 1;
+          if (nextW <= 0) {
+            handleTimeOut("white");
+            return 0;
+          }
+          return nextW;
+        }
+        return w;
+      });
+      setBlackTime((b) => {
+        if (turn === "black") {
+          const nextB = b - 1;
+          if (nextB <= 0) {
+            handleTimeOut("black");
+            return 0;
+          }
+          return nextB;
+        }
+        return b;
+      });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [turn, isGameStarted, mate]);
+  }, [turn, isGameStarted, mate, whiteTime, blackTime]);
 
   function formatTime(time) {
     const minutes = Math.floor(time / 60);
@@ -313,19 +399,60 @@ export default function Homepage() {
           </div>
 
           {!isGameStarted && (
-            <div className="flex flex-col gap-2 bg-slate-900/50 p-3 rounded-2xl border border-slate-700/50">
-              <label className="text-xs text-slate-400 font-semibold">وقت البداية (لكل لاعب):</label>
-              <select
-                value={mytime}
-                onChange={(e) => handleTimeChange(Number(e.target.value))}
-                className="bg-slate-800 text-slate-200 text-sm font-bold p-2 rounded-xl border border-slate-600 focus:outline-none cursor-pointer"
-              >
-                <option value={180}>3 دقائق (خاطف)</option>
-                <option value={300}>5 دقائق (سريع)</option>
-                <option value={600}>10 دقائق (كلاسيكي)</option>
-                <option value={900}>15 دقيقة</option>
-                <option value={1800}>30 دقيقة</option>
-              </select>
+            <div className="flex flex-col gap-3 bg-slate-900/50 p-3 rounded-2xl border border-slate-700/50">
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-slate-400 font-semibold">نوع التوقيت:</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleTimerModeChange("match")}
+                    className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-xl border transition cursor-pointer ${timerMode === "match" ? "bg-amber-500 text-slate-950 border-amber-400 shadow" : "bg-slate-800 text-slate-300 border-slate-700"}`}
+                  >
+                    وقت المباراة
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTimerModeChange("move")}
+                    className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-xl border transition cursor-pointer ${timerMode === "move" ? "bg-amber-500 text-slate-950 border-amber-400 shadow" : "bg-slate-800 text-slate-300 border-slate-700"}`}
+                  >
+                    وقت النقلة
+                  </button>
+                </div>
+              </div>
+
+              {timerMode === "match" ? (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-slate-400 font-semibold">:وقت البداية (لكل لاعب)</label>
+                  <select
+                    value={matchTimeSetting}
+                    onChange={(e) => handleMatchTimeChange(Number(e.target.value))}
+                    className="bg-slate-800 text-slate-200 text-sm font-bold p-2 rounded-xl border border-slate-600 focus:outline-none cursor-pointer"
+                  >
+                    <option value={60}>دقيقة واحدة (رصاصي)</option>
+                    <option value={180}>3 دقائق (خاطف)</option>
+                    <option value={300}>5 دقائق (خاطف)</option>
+                    <option value={600}>10 دقائق (سريع)</option>
+                    <option value={900}>15 دقيقة</option>
+                    <option value={1800}>30 دقيقة (كلاسيكي)</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-slate-400 font-semibold">:وقت النقلة (لكل نقلة)</label>
+                  <select
+                    value={moveTimeSetting}
+                    onChange={(e) => handleMoveTimeChange(Number(e.target.value))}
+                    className="bg-slate-800 text-slate-200 text-sm font-bold p-2 rounded-xl border border-slate-600 focus:outline-none cursor-pointer"
+                  >
+                    <option value={30}>30 ثانية للنقلة</option>
+                    <option value={60}>دقيقة واحدة للنقلة</option>
+                    <option value={120}>دقيقتان للنقلة</option>
+                    <option value={300}>5 دقائق للنقلة</option>
+                  </select>
+                </div>
+              )}
+
             </div>
           )}
 
@@ -371,7 +498,11 @@ export default function Homepage() {
             {!isGameStarted ? (
               <button
                 className="flex-1 py-3 px-6 rounded-2xl bg-linear-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold shadow-lg shadow-green-600/30 transition-all transform active:scale-95 text-center cursor-pointer"
-                onClick={() => setIsGameStarted(true)}
+                onClick={() => {
+                  setIsGameStarted(true);
+                  setWhiteTime(currentTimeSetting);
+                  setBlackTime(currentTimeSetting);
+                }}
               >
                 بدء اللعب
               </button>
@@ -391,7 +522,7 @@ export default function Homepage() {
 
         </div>
 
-<div className="flex flex-col items-center bg-slate-900/60 p-2 sm:p-6 rounded-3xl border border-slate-700 shadow-inner w-full max-w-lg mx-auto">
+        <div className="flex flex-col items-center bg-slate-900/60 p-2 sm:p-6 rounded-3xl border border-slate-700 shadow-inner w-full max-w-lg mx-auto">
           
           <div className="rounded-2xl overflow-hidden border-4 border-slate-700 shadow-2xl bg-[#769656] w-full aspect-square">
             <div className="grid grid-cols-8 w-full h-full">
