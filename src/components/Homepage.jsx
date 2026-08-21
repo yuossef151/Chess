@@ -1,543 +1,364 @@
-import { useEffect, useState } from "react";
-import { getValidMoves } from "./chess/moves";
-import { isKingInCheck, isCheckmate, isMoveSafe } from "./chess/rules";
-import { getPieceSymbol } from "./chess/utils";
+import React, { useState } from "react";
+import { useChessGame, getPieceSymbol, formatTime } from "./chess/utils";
 import { size, letters, numbers } from "./chess/constants";
 
-const sounds = {
-  self: new Audio(new URL("/public/ms/move-self.mp3", import.meta.url).href),
-  capture: new Audio(new URL("/public/ms/capture.mp3", import.meta.url).href),
-  check: new Audio(new URL("/public/ms/move-check.mp3", import.meta.url).href),
-  end: new Audio(new URL("/public/ms/game-end.mp3", import.meta.url).href),
-  castle: new Audio(new URL("/public/ms/castle.mp3", import.meta.url).href),
-};
-
-function playAudio(type) {
-  const sound = sounds[type] || sounds.self;
-  try {
-    sound.currentTime = 0;
-    sound.play().catch((e) => {
-      console.warn("Autoplay blocked or audio error:", e);
-    });
-  } catch (error) {
-    console.error("Audio play error:", error);
-  }
-}
-
 export default function Homepage() {
-  const initialPieces = [
-    { id: "rook1", type: "rook", position: "A8", color: "black", hasMoved: false },
-    { id: "knight1", type: "knight", position: "B8", color: "black", hasMoved: false },
-    { id: "bishop1", type: "bishop", position: "C8", color: "black", hasMoved: false },
-    { id: "queen", type: "queen", position: "D8", color: "black", hasMoved: false },
-    { id: "king", type: "king", position: "E8", color: "black", hasMoved: false },
-    { id: "bishop2", type: "bishop", position: "F8", color: "black", hasMoved: false },
-    { id: "knight2", type: "knight", position: "G8", color: "black", hasMoved: false },
-    { id: "rook2", type: "rook", position: "H8", color: "black", hasMoved: false },
-    { id: "pawn1", type: "pawn", position: "A7", color: "black", hasMoved: false },
-    { id: "pawn2", type: "pawn", position: "B7", color: "black", hasMoved: false },
-    { id: "pawn3", type: "pawn", position: "C7", color: "black", hasMoved: false },
-    { id: "pawn4", type: "pawn", position: "D7", color: "black", hasMoved: false },
-    { id: "pawn5", type: "pawn", position: "E7", color: "black", hasMoved: false },
-    { id: "pawn6", type: "pawn", position: "F7", color: "black", hasMoved: false },
-    { id: "pawn7", type: "pawn", position: "G7", color: "black", hasMoved: false },
-    { id: "pawn8", type: "pawn", position: "H7", color: "black", hasMoved: false },
+  const {
+    pieces,
+    turn,
+    moves,
+    selectedPiece,
+    promotion,
+    checkedKing,
+    mate,
+    showWinModal,
+    win,
+    timerMode,
+    matchTimeSetting,
+    moveTimeSetting,
+    whiteTime,
+    blackTime,
+    isGameStarted,
+    currentTimeSetting,
+    roomCode,
+    inputRoom,
+    inRoom,
+    playerColor,
+    opponentConnected,
+    setIsGameStarted,
+    setWhiteTime,
+    setBlackTime,
+    setRoomCode,
+    setInputRoom,
+    setInRoom,
+    createRoom,
+    joinRoom,
+    startPassAndPlay,
+    handlePromotion,
+    resetGame,
+    handleTimerModeChange,
+    handleMatchTimeChange,
+    handleMoveTimeChange,
+    handleSquareClick,
+    leaveRoom,
+  } = useChessGame();
 
-    { id: "rook3", type: "rook", position: "A1", color: "white", hasMoved: false },
-    { id: "knight3", type: "knight", position: "B1", color: "white", hasMoved: false },
-    { id: "bishop3", type: "bishop", position: "C1", color: "white", hasMoved: false },
-    { id: "queen2", type: "queen", position: "D1", color: "white", hasMoved: false },
-    { id: "king2", type: "king", position: "E1", color: "white", hasMoved: false },
-    { id: "bishop4", type: "bishop", position: "F1", color: "white", hasMoved: false },
-    { id: "knight4", type: "knight", position: "G1", color: "white", hasMoved: false },
-    { id: "rook4", type: "rook", position: "H1", color: "white", hasMoved: false },
-    { id: "pawn9", type: "pawn", position: "A2", color: "white", hasMoved: false },
-    { id: "pawn10", type: "pawn", position: "B2", color: "white", hasMoved: false },
-    { id: "pawn11", type: "pawn", position: "C2", color: "white", hasMoved: false },
-    { id: "pawn12", type: "pawn", position: "D2", color: "white", hasMoved: false },
-    { id: "pawn13", type: "pawn", position: "E2", color: "white", hasMoved: false },
-    { id: "pawn14", type: "pawn", position: "F2", color: "white", hasMoved: false },
-    { id: "pawn15", type: "pawn", position: "G2", color: "white", hasMoved: false },
-    { id: "pawn16", type: "pawn", position: "H2", color: "white", hasMoved: false },
-  ];
+  const [roomError, setRoomError] = useState("");
 
-  const savedPieces = JSON.parse(localStorage.getItem("chessPieces"));
-  const savedTurn = localStorage.getItem("chessTurn");
-  const [pieces, setPieces] = useState(savedPieces || initialPieces);
-  const [turn, setTurn] = useState(savedTurn || "white");
-  const [moves, setMoves] = useState([]);
-  const [selectedPiece, setSelectedPiece] = useState(null);
-  const [promotion, setPromotion] = useState(null);
-  const [lastMove, setLastMove] = useState(null);
-  const [checkedKing, setCheckedKing] = useState(null);
-  const [mate, setmate] = useState(false);
-  const [showWinModal, setShowWinModal] = useState(false);
-  const [win, setwin] = useState();
-  
-  const savedTimerMode = localStorage.getItem("timerMode") || "match";
-  const [timerMode, setTimerMode] = useState(savedTimerMode);
+  const isBlackPlayer = playerColor === "black";
+  const isGuestInRoom = inRoom && playerColor === "black";
+  const isHost = inRoom && playerColor === "white";
 
-  const savedMatchTime = JSON.parse(localStorage.getItem("matchTime")) || 180;
-  const [matchTimeSetting, setMatchTimeSetting] = useState(savedMatchTime);
+  const handleCreateRoomClick = () => {
+    createRoom();
+    setRoomError("");
+  };
 
-  const savedMoveTime = JSON.parse(localStorage.getItem("moveTime")) || 60;
-  const [moveTimeSetting, setMoveTimeSetting] = useState(savedMoveTime);
+  const handleJoin = async () => {
+    if (!inputRoom.trim()) {
+      setRoomError("برجاء كتابة كود الغرفة أولاً");
+      return;
+    }
 
-  const currentTimeSetting = timerMode === "match" ? matchTimeSetting : moveTimeSetting;
-
-  const savedWhiteTime = JSON.parse(localStorage.getItem("whiteTime"));
-  const savedBlackTime = JSON.parse(localStorage.getItem("blackTime"));
-  const [whiteTime, setWhiteTime] = useState(savedWhiteTime ?? currentTimeSetting);
-  const [blackTime, setBlackTime] = useState(savedBlackTime ?? currentTimeSetting);
-  
-  const savedStart = JSON.parse(localStorage.getItem("isGameStarted"));
-  const [isGameStarted, setIsGameStarted] = useState(savedStart ?? false);
-
-  const checkKing = (pieces, color) => isKingInCheck(pieces, color, lastMove);
-  const checkMate = (color, pieces) => isCheckmate(color, pieces, lastMove);
-  const safeMove = (piece, square, pieces) => isMoveSafe(piece, square, pieces, lastMove);
-
-  function triggerCheckmateSequence(winningColor, kingPosition) {
-    setwin(winningColor);
-    setmate(true);
-    setCheckedKing(kingPosition);
-    playAudio("end");
-
-    setTimeout(() => {
-      setShowWinModal(true);
-    }, 1500);
-  }
-
-  function handleTimeOut(losingColor) {
-    const winningColor = losingColor === "white" ? "black" : "white";
-    const king = pieces.find((p) => p.type === "king" && p.color === losingColor);
-    triggerCheckmateSequence(winningColor, king ? king.position : (losingColor === "white" ? "E1" : "E8"));
-  }
-
-  function handlePromotion(choice) {
-    const { piece, targetSquare } = promotion;
-    const isCapture = pieces.some((p) => p.position === targetSquare);
-    const movingColor = piece.color;
-
-    setPieces((prev) => {
-      let newPieces = prev
-        .filter((p) => p.position !== targetSquare)
-        .map((p) =>
-          p.id === piece.id ? { ...p, position: targetSquare, type: choice } : p
+    setRoomError("");
+    try {
+      const result = await joinRoom(inputRoom);
+      if (!result) {
+        setRoomError(
+          "كود الغرفة غير صحيح أو غير موجود، تأكد من الكود وحاول مجدداً."
         );
-
-      const nextTurn = movingColor === "white" ? "black" : "white";
-      const king = newPieces.find((p) => p.type === "king" && p.color === nextTurn);
-
-      if (checkMate(nextTurn, newPieces)) {
-        triggerCheckmateSequence(movingColor, king.position);
-      } else if (checkKing(newPieces, nextTurn)) {
-        setCheckedKing(king.position);
-        playAudio("check");
-      } else {
-        setCheckedKing(null);
-        playAudio(isCapture ? "capture" : "self");
       }
-
-      return newPieces;
-    });
-
-    if (timerMode === "move") {
-      const remainingTime = movingColor === "white" ? whiteTime : blackTime;
-      const bonus = Math.max(0, remainingTime);
-      if (movingColor === "white") {
-        setWhiteTime(moveTimeSetting + bonus);
-      } else {
-        setBlackTime(moveTimeSetting + bonus);
-      }
-    }
-
-    const nextTurnColor = movingColor === "white" ? "black" : "white";
-    setTurn(nextTurnColor);
-    setPromotion(null);
-    setMoves([]);
-    setSelectedPiece(null);
-  }
-
-  function movePiece(piece, targetSquare) {
-    const from = piece.position;
-    const movingColor = piece.color;
-    let enPassantCaptureId = null;
-    const targetPiece = pieces.find((p) => p.position === targetSquare);
-    let isCapture = !!targetPiece;
-
-    if (piece.type === "pawn" && lastMove) {
-      const enemy = lastMove.piece;
-      if (enemy.type === "pawn") {
-        const fromRow = parseInt(lastMove.from[1]);
-        const toRow = parseInt(lastMove.to[1]);
-
-        if (Math.abs(fromRow - toRow) === 2) {
-          const enemyColIndex = letters.indexOf(lastMove.to[0]);
-          const enemyRowIndex = numbers.indexOf(lastMove.to[1]);
-          const myColIndex = letters.indexOf(from[0]);
-          const myRowIndex = numbers.indexOf(from[1]);
-          const targetColIndex = letters.indexOf(targetSquare[0]);
-          const targetRowIndex = numbers.indexOf(targetSquare[1]);
-
-          const isDiagonal =
-            Math.abs(targetColIndex - myColIndex) === 1 && targetRowIndex !== myRowIndex;
-          const isEmpty = !pieces.find((p) => p.position === targetSquare);
-          const isAdjacent =
-            Math.abs(enemyColIndex - myColIndex) === 1 && enemyRowIndex === myRowIndex;
-
-          if (isDiagonal && isEmpty && isAdjacent) {
-            enPassantCaptureId = enemy.id;
-            isCapture = true;
-          }
-        }
-      }
-    }
-
-    const updatedLastMove = { piece, from, to: targetSquare };
-    setLastMove(updatedLastMove);
-
-    if (piece.type === "pawn") {
-      const reachedEnd =
-        (movingColor === "white" && targetSquare[1] === "8") ||
-        (movingColor === "black" && targetSquare[1] === "1");
-
-      if (reachedEnd) {
-        setPromotion({ piece, targetSquare });
-        return;
-      }
-    }
-
-    const isCastlingMove =
-      piece.type === "king" &&
-      piece.position === (movingColor === "white" ? "E1" : "E8") &&
-      (targetSquare === "G1" || targetSquare === "C1" || targetSquare === "G8" || targetSquare === "C8");
-
-    setPieces((prev) => {
-      let newPieces = [...prev];
-
-      if (enPassantCaptureId) {
-        newPieces = newPieces.filter((p) => p.id !== enPassantCaptureId);
-      }
-
-      newPieces = newPieces.filter(
-        (p) => p.position !== targetSquare || p.id === piece.id
+      // لو result === true، هنسيب socket.on("room-joined") في utils.js
+      // هي اللي تحدّث الـ state (setInRoom, setPlayerColor...) تلقائيًا
+    } catch (err) {
+      setRoomError(
+        "كود الغرفة غير صحيح أو غير موجود، تأكد من الكود وحاول مجدداً."
       );
-
-      newPieces = newPieces.map((p) =>
-        p.id === piece.id ? { ...p, position: targetSquare, hasMoved: true } : p
-      );
-
-      if (isCastlingMove) {
-        const row = movingColor === "white" ? "1" : "8";
-        if (targetSquare[0] === "G") {
-          newPieces = newPieces.map((p) =>
-            p.position === "H" + row ? { ...p, position: "F" + row, hasMoved: true } : p
-          );
-        } else if (targetSquare[0] === "C") {
-          newPieces = newPieces.map((p) =>
-            p.position === "A" + row ? { ...p, position: "D" + row, hasMoved: true } : p
-          );
-        }
-      }
-
-      const nextTurn = movingColor === "white" ? "black" : "white";
-      const king = newPieces.find((p) => p.type === "king" && p.color === nextTurn);
-
-      if (isCheckmate(nextTurn, newPieces, updatedLastMove)) {
-        triggerCheckmateSequence(movingColor, king.position);
-      } else if (checkKing(newPieces, nextTurn)) {
-        setCheckedKing(king.position);
-        playAudio("check");
-      } else {
-        setCheckedKing(null);
-        if (isCastlingMove) {
-          playAudio("castle");
-        } else {
-          playAudio(isCapture ? "capture" : "self");
-        }
-      }
-
-      return newPieces;
-    });
-
-    if (piece.type !== "pawn" || (targetSquare[1] !== "8" && targetSquare[1] !== "1")) {
-      if (timerMode === "move") {
-        const remainingTime = movingColor === "white" ? whiteTime : blackTime;
-        const bonus = Math.max(0, remainingTime);
-        if (movingColor === "white") {
-          setWhiteTime(moveTimeSetting + bonus);
-        } else {
-          setBlackTime(moveTimeSetting + bonus);
-        }
-      }
-
-      const nextTurn = movingColor === "white" ? "black" : "white";
-      setTurn(nextTurn);
-    }
-
-    setMoves([]);
-    setSelectedPiece(null);
-  }
-
-  const resetGame = () => {
-    setPieces(initialPieces);
-    setTurn("white");
-    setWhiteTime(currentTimeSetting);
-    setBlackTime(currentTimeSetting);
-    setMoves([]);
-    setSelectedPiece(null);
-    setCheckedKing(null);
-    setmate(false);
-    setShowWinModal(false);
-    setwin(null);
-    setIsGameStarted(false);
-    localStorage.removeItem("chessPieces");
-    localStorage.removeItem("chessTurn");
-    localStorage.removeItem("isGameStarted");
-  };
-
-  const handleTimerModeChange = (mode) => {
-    setTimerMode(mode);
-    localStorage.setItem("timerMode", mode);
-    const newTime = mode === "match" ? matchTimeSetting : moveTimeSetting;
-    setWhiteTime(newTime);
-    setBlackTime(newTime);
-  };
-
-  const handleMatchTimeChange = (time) => {
-    setMatchTimeSetting(time);
-    localStorage.setItem("matchTime", JSON.stringify(time));
-    if (timerMode === "match") {
-      setWhiteTime(time);
-      setBlackTime(time);
     }
   };
 
-  const handleMoveTimeChange = (time) => {
-    setMoveTimeSetting(time);
-    localStorage.setItem("moveTime", JSON.stringify(time));
-    if (timerMode === "move") {
-      setWhiteTime(time);
-      setBlackTime(time);
-    }
+  const handleLeaveRoom = () => {
+    resetGame();
+    leaveRoom();
+    setRoomError("");
   };
-
-  useEffect(() => {
-    localStorage.setItem("whiteTime", JSON.stringify(whiteTime));
-    localStorage.setItem("blackTime", JSON.stringify(blackTime));
-  }, [whiteTime, blackTime]);
-
-  useEffect(() => {
-    localStorage.setItem("chessPieces", JSON.stringify(pieces));
-    localStorage.setItem("chessTurn", turn);
-  }, [pieces, turn]);
-
-  useEffect(() => {
-    localStorage.setItem("isGameStarted", JSON.stringify(isGameStarted));
-  }, [isGameStarted]);
-
-  useEffect(() => {
-    if (!isGameStarted) return;
-    if (mate) return;
-    if (whiteTime === 0) {
-      handleTimeOut("white");
-      return;
-    }
-    if (blackTime === 0) {
-      handleTimeOut("black");
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setWhiteTime((w) => {
-        if (turn === "white") {
-          const nextW = w - 1;
-          if (nextW <= 0) {
-            handleTimeOut("white");
-            return 0;
-          }
-          return nextW;
-        }
-        return w;
-      });
-      setBlackTime((b) => {
-        if (turn === "black") {
-          const nextB = b - 1;
-          if (nextB <= 0) {
-            handleTimeOut("black");
-            return 0;
-          }
-          return nextB;
-        }
-        return b;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [turn, isGameStarted, mate, whiteTime, blackTime]);
-
-  function formatTime(time) {
-    const minutes = Math.floor(time / 60);
-    const seconds = time % 60;
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center  md:p-6 font-sans">
-      
+    <div
+      className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center md:p-6 font-sans relative"
+      dir="rtl"
+    >
       {!isGameStarted ? (
-        // شاشة الإعدادات فقط قبل بدء اللعب (بحجم الموبايل)
         <div className="w-full max-w-md bg-slate-800/85 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-700/60 p-5 sm:p-6 flex flex-col gap-5">
           <div className="text-center">
-            <h1 className="text-2xl font-extrabold bg-linear-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-extrabold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
               Chess Arena
             </h1>
-            <p className="text-xs text-slate-400 mt-1">اختار الإعدادات وابدأ المواجهة</p>
+            <p className="text-xs text-slate-400 mt-1">
+              اختار الإعدادات وابدأ المواجهة
+            </p>
           </div>
 
-          <div className="flex flex-col gap-3 bg-slate-900/50 p-3.5 rounded-2xl border border-slate-700/50">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400 font-semibold">نوع التوقيت:</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleTimerModeChange("match")}
-                  className={`flex-1 py-2 px-2 text-xs font-bold rounded-xl border transition cursor-pointer ${timerMode === "match" ? "bg-amber-500 text-slate-950 border-amber-400 shadow" : "bg-slate-800 text-slate-300 border-slate-700"}`}
-                >
-                  وقت المباراة
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTimerModeChange("move")}
-                  className={`flex-1 py-2 px-2 text-xs font-bold rounded-xl border transition cursor-pointer ${timerMode === "move" ? "bg-amber-500 text-slate-950 border-amber-400 shadow" : "bg-slate-800 text-slate-300 border-slate-700"}`}
-                >
-                  وقت النقلة
-                </button>
-              </div>
-            </div>
+          {/* إدارة الغرفة */}
+          <div className="flex flex-col gap-3 bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50">
+            <label className="text-xs text-slate-400 font-semibold text-right">
+              إدارة الغرفة (لعب مع صديق):
+            </label>
 
-            {timerMode === "match" ? (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-slate-400 font-semibold">وقت البداية (لكل لاعب):</label>
-                <select
-                  value={matchTimeSetting}
-                  onChange={(e) => handleMatchTimeChange(Number(e.target.value))}
-                  className="bg-slate-800 text-slate-200 text-sm font-bold p-2.5 rounded-xl border border-slate-600 focus:outline-none cursor-pointer"
-                >
-                  <option value={60}>دقيقة واحدة (رصاصي)</option>
-                  <option value={180}>3 دقائق (خاطف)</option>
-                  <option value={300}>5 دقائق (خاطف)</option>
-                  <option value={600}>10 دقائق (سريع)</option>
-                  <option value={900}>15 دقيقة</option>
-                  <option value={1800}>30 دقيقة (كلاسيكي)</option>
-                </select>
+            {!inRoom ? (
+              <div className="flex flex-col gap-3">
+                {/* خانة الكتابة وزر الانضمام */}
+                <div className="flex gap-2 w-full" dir="ltr">
+                  <button
+                    type="button"
+                    onClick={handleJoin}
+                    className="py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition cursor-pointer shrink-0"
+                  >
+                    انضمام
+                  </button>
+                  <input
+                    type="text"
+                    placeholder="اكتب كود الغرفة"
+                    value={inputRoom}
+                    onChange={(e) => {
+                      setInputRoom(e.target.value.toUpperCase());
+                      if (roomError) setRoomError("");
+                    }}
+                    className="flex-1 bg-slate-800 text-slate-200 text-xs px-3 py-2.5 rounded-xl border border-slate-600 focus:outline-none uppercase text-right"
+                  />
+                </div>
+                {roomError && (
+                  <span className="text-[11px] text-red-400 font-medium px-1">
+                    {roomError}
+                  </span>
+                )}
+
+                {/* زر إنشاء غرفة جديدة مرتبة في السطر التالي لتجنب التداخل */}
+                <div className="flex items-center justify-between pt-1 border-t border-slate-800">
+                  <span className="text-xs text-slate-400">
+                    أو أنشئ غرفة جديدة:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCreateRoomClick}
+                    className="py-2 px-4 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    إنشاء كود جديد
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-slate-400 font-semibold">وقت النقلة (لكل نقلة):</label>
-                <select
-                  value={moveTimeSetting}
-                  onChange={(e) => handleMoveTimeChange(Number(e.target.value))}
-                  className="bg-slate-800 text-slate-200 text-sm font-bold p-2.5 rounded-xl border border-slate-600 focus:outline-none cursor-pointer"
-                >
-                  <option value={30}>30 ثانية للنقلة</option>
-                  <option value={60}>دقيقة واحدة للنقلة</option>
-                  <option value={120}>دقيقتان للنقلة</option>
-                  <option value={300}>5 دقائق للنقلة</option>
-                </select>
+              <div className="flex flex-col items-center gap-2 py-1">
+                {isHost && (
+                  <span className="text-xs text-slate-300">
+                    الكود المقترح:{" "}
+                    <strong
+                      className="text-amber-400 font-mono text-base"
+                      dir="ltr"
+                    >
+                      {roomCode}
+                    </strong>
+                  </span>
+                )}
+                <span className="text-xs bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 text-slate-200">
+                  لونك في هذه الجولة:{" "}
+                  <strong
+                    className={
+                      playerColor === "white" ? "text-white" : "text-amber-400"
+                    }
+                  >
+                    {playerColor === "white" ? "الأبيض ⚪" : "الأسود ⚫"}
+                  </strong>
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  {opponentConnected
+                    ? "🟢 الخصم متصل الآن"
+                    : "⏳ بانتظار اتصال الخصم..."}
+                </span>
               </div>
             )}
           </div>
 
-          <div className="flex flex-col gap-3">
-            {/* اللاعب الأسود */}
-            <div className={`flex items-center justify-between p-3  rounded-2xl border ${turn === "black" ? "bg-slate-700/90 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-900/40 border-slate-700/50"}`}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center border border-slate-600">
-                  <svg className="w-6 h-6 fill-black" viewBox="0 0 20 20">
-                    <path d="M7.725 2.146c-1.016.756-1.289 1.953-1.239 2.59c.064.779.222 1.793.222 1.793s-.313.17-.313.854c.109 1.717.683.976.801 1.729c.284 1.814.933 1.491.933 2.481c0 1.649-.68 2.42-2.803 3.334C3.196 15.845 1 17 1 19v1h18v-1c0-2-2.197-3.155-4.328-4.072c-2.123-.914-2.801-1.684-2.801-3.334c0-.99.647-.667.932-2.481c.119-.753.692-.012.803-1.729c0-.684-.314-.854-.314-.854s.158-1.014.221-1.793c.065-.817-.398-2.561-2.3-3.096c-.333-.34-.558-.881.466-1.424c-2.24-.105-2.761 1.067-3.954 1.929"></path>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-300">اللاعب الأسود</h3>
-                  <span className="text-xs text-slate-400">منتظر</span>
+          {!inRoom && (
+            <div className="flex flex-col gap-3 bg-slate-900/50 p-3.5 rounded-2xl border border-slate-700/50">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-slate-400 font-semibold">
+                  نوع التوقيت:
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleTimerModeChange("match")}
+                    className={`flex-1 py-2 px-2 text-xs font-bold rounded-xl border transition cursor-pointer ${
+                      timerMode === "match"
+                        ? "bg-amber-500 text-slate-950 border-amber-400 shadow"
+                        : "bg-slate-800 text-slate-300 border-slate-700"
+                    }`}
+                  >
+                    وقت المباراة
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTimerModeChange("move")}
+                    className={`flex-1 py-2 px-2 text-xs font-bold rounded-xl border transition cursor-pointer ${
+                      timerMode === "move"
+                        ? "bg-amber-500 text-slate-950 border-amber-400 shadow"
+                        : "bg-slate-800 text-slate-300 border-slate-700"
+                    }`}
+                  >
+                    وقت النقلة
+                  </button>
                 </div>
               </div>
-              <div className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 font-mono text-sm text-amber-400">
-                {formatTime(blackTime)}
-              </div>
-            </div>
 
-            {/* اللاعب الأبيض */}
-            <div className={`flex items-center justify-between p-3  rounded-2xl border ${turn === "white" ? "bg-slate-700/90 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-900/40 border-slate-700/50"}`}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-slate-400">
-                  <svg className="w-6 h-6 fill-amber-50" viewBox="0 0 20 20">
-                    <path d="M7.725 2.146c-1.016.756-1.289 1.953-1.239 2.59c.064.779.222 1.793.222 1.793s-.313.17-.313.854c.109 1.717.683.976.801 1.729c.284 1.814.933 1.491.933 2.481c0 1.649-.68 2.42-2.803 3.334C3.196 15.845 1 17 1 19v1h18v-1c0-2-2.197-3.155-4.328-4.072c-2.123-.914-2.801-1.684-2.801-3.334c0-.99.647-.667.932-2.481c.119-.753.692-.012.803-1.729c0-.684-.314-.854-.314-.854s.158-1.014.221-1.793c.065-.817-.398-2.561-2.3-3.096c-.333-.34-.558-.881.466-1.424c-2.24-.105-2.761 1.067-3.954 1.929"></path>
-                  </svg>
+              {timerMode === "match" ? (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-slate-400 font-semibold">
+                    وقت البداية (لكل لاعب):
+                  </label>
+                  <select
+                    value={matchTimeSetting}
+                    onChange={(e) =>
+                      handleMatchTimeChange(Number(e.target.value))
+                    }
+                    className="bg-slate-800 text-slate-200 text-sm font-bold p-2.5 rounded-xl border border-slate-600 focus:outline-none cursor-pointer"
+                  >
+                    <option value={60}>دقيقة واحدة (رصاصي)</option>
+                    <option value={180}>3 دقائق (خاطف)</option>
+                    <option value={300}>5 دقائق (خاطف)</option>
+                    <option value={600}>10 دقائق (سريع)</option>
+                    <option value={900}>15 دقيقة</option>
+                    <option value={1800}>30 دقيقة (كلاسيكي)</option>
+                  </select>
                 </div>
-                <div>
-                  <h3 className="font-bold text-sm text-white">اللاعب الأبيض</h3>
-                  <span className="text-xs text-slate-400">دور اللعب...</span>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-slate-400 font-semibold">
+                    وقت النقلة (لكل نقلة):
+                  </label>
+                  <select
+                    value={moveTimeSetting}
+                    onChange={(e) =>
+                      handleMoveTimeChange(Number(e.target.value))
+                    }
+                    className="bg-slate-800 text-slate-200 text-sm font-bold p-2.5 rounded-xl border border-slate-600 focus:outline-none cursor-pointer"
+                  >
+                    <option value={30}>30 ثانية للنقلة</option>
+                    <option value={60}>دقيقة واحدة للنقلة</option>
+                    <option value={120}>دقيقتان للنقلة</option>
+                    <option value={300}>5 دقائق للنقلة</option>
+                  </select>
                 </div>
-              </div>
-              <div className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 font-mono text-sm text-amber-400">
-                {formatTime(whiteTime)}
-              </div>
+              )}
             </div>
-          </div>
+          )}
 
-          <div className="flex gap-3 mt-1">
+          <div className="flex flex-col gap-2.5 mt-1">
+            {!inRoom && (
+              <button
+                type="button"
+                className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold shadow-lg shadow-green-600/30 transition-all transform active:scale-95 text-center cursor-pointer"
+                onClick={startPassAndPlay}
+              >
+                مرر والعب (Pass & Play)
+              </button>
+            )}
+
+            {isHost && (
+              <button
+                type="button"
+                className={`w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg transition-all transform active:scale-95 text-center cursor-pointer text-xs ${
+                  !opponentConnected ? "opacity-70" : ""
+                }`}
+                onClick={() => setIsGameStarted(true)}
+              >
+                {opponentConnected
+                  ? "بدء اللعب مع الصديق (Online)"
+                  : "انتظار انضمام الصديق لبدء اللعب..."}
+              </button>
+            )}
+
+            {isGuestInRoom && (
+              <div className="text-center p-3 bg-blue-500/10 border border-blue-500/30 rounded-2xl">
+                <p className="text-xs text-blue-400 font-bold">
+                  {opponentConnected
+                    ? "تم الانضمام بنجاح! في انتظار المضيف لبدء اللعبة..."
+                    : "جاري الاتصال بالغرفة..."}
+                </p>
+              </div>
+            )}
+
             <button
-              className="flex-1 py-3 px-6 rounded-2xl bg-linear-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold shadow-lg shadow-green-600/30 transition-all transform active:scale-95 text-center cursor-pointer"
-              onClick={() => {
-                setIsGameStarted(true);
-                setWhiteTime(currentTimeSetting);
-                setBlackTime(currentTimeSetting);
-              }}
+              type="button"
+              className="w-full py-2.5 px-4 rounded-2xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold border border-slate-600 transition-all transform active:scale-95 text-center cursor-pointer text-xs"
+              onClick={handleLeaveRoom}
             >
-              بدء اللعب
-            </button>
-            <button
-              className="py-3 px-4 rounded-2xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold border border-slate-600 transition-all transform active:scale-95 text-center cursor-pointer"
-              onClick={resetGame}
-            >
-              إعادة ضبط
+              {inRoom ? "مغادرة الغرفة" : "إعادة ضبط"}
             </button>
           </div>
         </div>
       ) : (
-        // بعد بدء اللعب: تظهر البوردة ويكون وقت اللاعب فوق قطعه مباشرة
         <div className="flex flex-col items-center gap-3 w-full max-w-lg mx-auto">
-          
-          {/* معلومات ووقت اللاعب الأسود (فوق القطع السوداء مباشرة) */}
-         <div className="m-4 w-[90%]">
-          <div className={`w-full flex items-center justify-between p-3  rounded-2xl transition-all duration-300 border ${turn === "black" ? "bg-slate-800 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-800/60 border-slate-700/50"}`}>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center border border-slate-600">
-                <svg className="w-5 h-5 fill-black" viewBox="0 0 20 20">
-                  <path d="M7.725 2.146c-1.016.756-1.289 1.953-1.239 2.59c.064.779.222 1.793.222 1.793s-.313.17-.313.854c.109 1.717.683.976.801 1.729c.284 1.814.933 1.491.933 2.481c0 1.649-.68 2.42-2.803 3.334C3.196 15.845 1 17 1 19v1h18v-1c0-2-2.197-3.155-4.328-4.072c-2.123-.914-2.801-1.684-2.801-3.334c0-.99.647-.667.932-2.481c.119-.753.692-.012.803-1.729c0-.684-.314-.854-.314-.854s.158-1.014.221-1.793c.065-.817-.398-2.561-2.3-3.096c-.333-.34-.558-.881.466-1.424c-2.24-.105-2.761 1.067-3.954 1.929"></path>
-                </svg>
+          {/* معلومات الخصم */}
+          <div className="m-4 w-[90%]">
+            <div
+              className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 border ${
+                turn === (isBlackPlayer ? "white" : "black")
+                  ? "bg-slate-800 border-red-500 shadow-lg shadow-red-500/20"
+                  : "bg-slate-800/60 border-slate-700/50"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-8 h-8 rounded-xl ${
+                    isBlackPlayer
+                      ? "bg-amber-50 border-slate-600"
+                      : "bg-black border-slate-400"
+                  } flex items-center justify-center border`}
+                >
+                  <svg
+                    className={`w-5 h-5 ${
+                      isBlackPlayer ? "fill-black" : "fill-amber-50"
+                    }`}
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M7.725 2.146c-1.016.756-1.289 1.953-1.239 2.59c.064.779.222 1.793.222 1.793s-.313.17-.313.854c.109 1.717.683.976.801 1.729c.284 1.814.933 1.491.933 2.481c0 1.649-.68 2.42-2.803 3.334C3.196 15.845 1 17 1 19v1h18v-1c0-2-2.197-3.155-4.328-4.072c-2.123-.914-2.801-1.684-2.801-3.334c0-.99.647-.667.932-2.481c.119-.753.692-.012.803-1.729c0-.684-.314-.854-.314-.854s.158-1.014.221-1.793c.065-.817-.398-2.561-2.3-3.096c-.333-.34-.558-.881.466-1.424c-2.24-.105-2.761 1.067-3.954 1.929"></path>
+                  </svg>
+                </div>
+                <div className="text-right">
+                  <h3 className="font-bold text-sm text-slate-200">
+                    {isBlackPlayer
+                      ? "اللاعب الأبيض (الخصم)"
+                      : "اللاعب الأسود (الخصم)"}
+                  </h3>
+                  <span className="text-xs text-slate-400">
+                    {turn === (isBlackPlayer ? "white" : "black")
+                      ? "دور اللعب..."
+                      : "منتظر"}
+                  </span>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-sm text-slate-300">اللاعب الأسود</h3>
-                <span className="text-xs text-slate-400">{turn === "black" ? "دور اللعب..." : "منتظر"}</span>
+              <div
+                className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 font-mono text-base text-amber-400"
+                dir="ltr"
+              >
+                {formatTime(isBlackPlayer ? whiteTime : blackTime)}
               </div>
-            </div>
-            <div className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 font-mono text-base text-amber-400">
-              {formatTime(blackTime)}
             </div>
           </div>
-         </div>
 
+          {/* رقعة الشطرنج */}
+          <div className="flex flex-col items-center rounded-3xl w-full">
+            <div className="overflow-hidden w-full aspect-square border-4 border-slate-700 rounded-3xl">
+              <div className="grid grid-cols-8 grid-rows-8 w-full h-full">
+                {numbers.map((num, rowIndex) =>
+                  letters.map((lettr, colIndex) => {
+                    // ✅ تم تصحيح اتجاه القلب (flip):
+                    // الأبيض يشوف رانك 8 فوق ورانك 1 (بتاعه) تحت
+                    // الأسود يشوف رانك 1 فوق ورانك 8 (بتاعه) تحت
+                    const row = isBlackPlayer ? 7 - rowIndex : rowIndex;
+                    const col = isBlackPlayer ? 7 - colIndex : colIndex;
 
-          {/* البوردة */}
-          <div className="flex flex-col items-center  rounded-3xl    w-full">
-            <div className=" overflow-hidden w-full  aspect-square">
-              <div className="grid grid-cols-8 w-full h-full">
-                {Array.from({ length: size }).map((_, row) =>
-                  Array.from({ length: size }).map((_, col) => {
                     const square = letters[col] + numbers[row];
                     const isDark = (row + col) % 2 === 1;
                     const piece = pieces.find((p) => p.position === square);
@@ -547,88 +368,63 @@ export default function Homepage() {
                     return (
                       <div
                         key={square}
-                        onClick={() => {
-                          if (!isGameStarted) return;
-                          const pieceOnSquare = pieces.find((p) => p.position === square);
-
-                          if (pieceOnSquare && pieceOnSquare.color === turn) {
-                            setSelectedPiece(pieceOnSquare);
-                            const validMoves = getValidMoves(
-                              pieceOnSquare,
-                              col,
-                              row,
-                              pieces,
-                              lastMove
-                            )
-                              .map(([c, r]) => letters[c] + numbers[r])
-                              .filter((sq) => safeMove(pieceOnSquare, sq, pieces));
-
-                            setMoves(validMoves);
-                            return;
-                          }
-
-                          if (selectedPiece && moves.includes(square)) {
-                            movePiece(selectedPiece, square);
-                            return;
-                          }
-
-                          setMoves([]);
-                          setSelectedPiece(null);
-                        }}
+                        onClick={() => handleSquareClick(square)}
                         className={`
                           w-full h-full
                           flex items-center justify-center
                           text-4xl sm:text-4xl md:text-5xl
                           cursor-pointer transition-colors relative select-none
                           ${isDark ? "bg-[#769656]" : "bg-[#eeeed2]"}
-                          ${isSelected ? "bg-amber-400/80!" : ""}
-                          ${checkedKing === square ? "bg-red-500/80 animate-pulse" : ""}
+                          ${isSelected ? "!bg-amber-400/80" : ""}
+                          ${
+                            checkedKing === square
+                              ? "bg-red-500/80 animate-pulse"
+                              : ""
+                          }
                         `}
                       >
-                        {row === 7 && (
-                          <span className={`absolute bottom-0.5 right-1 text-[9px] sm:text-xs font-bold pointer-events-none ${isDark ? "text-[#eeeed2]/80" : "text-[#769656]/90"}`}>
+                        {colIndex === 7 && (
+                          <span
+                            className={`absolute bottom-0.5 right-1 text-[9px] sm:text-xs font-bold pointer-events-none ${
+                              isDark ? "text-[#eeeed2]/80" : "text-[#769656]/90"
+                            }`}
+                            dir="ltr"
+                          >
                             {letters[col]}
                           </span>
                         )}
 
-                        {col === 7 && (
-                          <span className={`absolute top-0.5 left-1 text-[9px] sm:text-xs font-bold pointer-events-none ${isDark ? "text-[#eeeed2]/80" : "text-[#769656]/90"}`}>
+                        {rowIndex === 7 && (
+                          <span
+                            className={`absolute top-0.5 left-1 text-[9px] sm:text-xs font-bold pointer-events-none ${
+                              isDark ? "text-[#eeeed2]/80" : "text-[#769656]/90"
+                            }`}
+                            dir="ltr"
+                          >
                             {numbers[row]}
                           </span>
                         )}
 
                         {isMoveTarget && (
-  <div className="absolute inset-0 z-25 flex items-center justify-center pointer-events-none">
-    {piece ? (
-      // لو المربع فيه قطعة (لأكلها): عمل إطار دائري أو حلقة محيطة بالمربع/القطعة
-      <div className="absolute inset-1 rounded-2xl border-4 border-black/20 bg-black/10"></div>
-    ) : (
-      // لو المربع فارغ: النقطة الدائرية العادية
-      <div className="w-3 h-3 sm:w-5 sm:h-5 rounded-full bg-black/25"></div>
-    )}
-  </div>
-)}
-
-                        {mate && checkedKing === square && piece?.type === "king" && (
-                          <div className="absolute top-1 right-1 z-30 w-5 h-5 sm:w-7 sm:h-7 bg-red-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg animate-bounce">
-                            <span className="text-white text-xs sm:text-sm transform rotate-180 drop-shadow">
-                                <img 
-    src={getPieceSymbol("king", piece.color)} 
-    alt={`${piece.color} ${piece.type}`} 
-    className="w-4/5 h-4/5 object-contain drop-shadow-md select-none pointer-events-none" 
-  />
-                            </span>
+                          <div className="absolute inset-0 z-25 flex items-center justify-center pointer-events-none">
+                            {piece ? (
+                              <div className="absolute inset-1 rounded-2xl border-4 border-black/20 bg-black/10"></div>
+                            ) : (
+                              <div className="w-3 h-3 sm:w-5 sm:h-5 rounded-full bg-black/25"></div>
+                            )}
                           </div>
                         )}
-                        
-                        <span className={`absolute inset-0 flex items-center justify-center transform transition-transform hover:scale-110 ${piece?.color === "white" ? "text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]" : "text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]"}`}>
+
+                        <span className="absolute inset-0 flex items-center justify-center transform transition-transform hover:scale-110">
                           {piece ? (
-  <img 
-    src={getPieceSymbol(piece.type, piece.color)} 
-    alt={`${piece.color} ${piece.type}`} 
-    className="w-4/5 h-4/5 object-contain drop-shadow-md select-none pointer-events-none" 
-  />
-) : ""}
+                            <img
+                              src={getPieceSymbol(piece.type, piece.color)}
+                              alt={`${piece.color} ${piece.type}`}
+                              className="w-4/5 h-4/5 object-contain drop-shadow-md select-none pointer-events-none"
+                            />
+                          ) : (
+                            ""
+                          )}
                         </span>
                       </div>
                     );
@@ -638,53 +434,128 @@ export default function Homepage() {
             </div>
           </div>
 
-          {/* معلومات ووقت اللاعب الأبيض (تحت البอร์ดة وفوق القطع البيضاء مباشرة) */}
+          {/* معلومات اللاعب الحالي */}
           <div className="m-4 w-[90%]">
-          <div className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 border ${turn === "white" ? "bg-slate-800 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-800/60 border-slate-700/50"}`}>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-black flex items-center justify-center border border-slate-400">
-                <svg className="w-5 h-5 fill-amber-50" viewBox="0 0 20 20">
-                  <path d="M7.725 2.146c-1.016.756-1.289 1.953-1.239 2.59c.064.779.222 1.793.222 1.793s-.313.17-.313.854c.109 1.717.683.976.801 1.729c.284 1.814.933 1.491.933 2.481c0 1.649-.68 2.42-2.803 3.334C3.196 15.845 1 17 1 19v1h18v-1c0-2-2.197-3.155-4.328-4.072c-2.123-.914-2.801-1.684-2.801-3.334c0-.99.647-.667.932-2.481c.119-.753.692-.012.803-1.729c0-.684-.314-.854-.314-.854s.158-1.014.221-1.793c.065-.817-.398-2.561-2.3-3.096c-.333-.34-.558-.881.466-1.424c-2.24-.105-2.761 1.067-3.954 1.929"></path>
-                </svg>
+            <div
+              className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 border ${
+                turn === (isBlackPlayer ? "black" : "white")
+                  ? "bg-slate-800 border-red-500 shadow-lg shadow-red-500/20"
+                  : "bg-slate-800/60 border-slate-700/50"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-8 h-8 rounded-xl ${
+                    isBlackPlayer
+                      ? "bg-black border-slate-400"
+                      : "bg-amber-50 border-slate-600"
+                  } flex items-center justify-center border`}
+                >
+                  <svg
+                    className={`w-5 h-5 ${
+                      isBlackPlayer ? "fill-amber-50" : "fill-black"
+                    }`}
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M7.725 2.146c-1.016.756-1.289 1.953-1.239 2.59c.064.779.222 1.793.222 1.793s-.313.17-.313.854c.109 1.717.683.976.801 1.729c.284 1.814.933 1.491.933 2.481c0 1.649-.68 2.42-2.803 3.334C3.196 15.845 1 17 1 19v1h18v-1c0-2-2.197-3.155-4.328-4.072c-2.123-.914-2.801-1.684-2.801-3.334c0-.99.647-.667.932-2.481c.119-.753.692-.012.803-1.729c0-.684-.314-.854-.314-.854s.158-1.014.221-1.793c.065-.817-.398-2.561-2.3-3.096c-.333-.34-.558-.881.466-1.424c-2.24-.105-2.761 1.067-3.954 1.929"></path>
+                  </svg>
+                </div>
+                <div className="text-right">
+                  <h3 className="font-bold text-sm text-slate-100">
+                    {isBlackPlayer
+                      ? "اللاعب الأسود (أنت)"
+                      : "اللاعب الأبيض (أنت)"}
+                  </h3>
+                  <span className="text-xs text-slate-400">
+                    {turn === (isBlackPlayer ? "black" : "white")
+                      ? "دور اللعب..."
+                      : "منتظر"}
+                  </span>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-sm text-white">اللاعب الأبيض</h3>
-                <span className="text-xs text-slate-400">{turn === "white" ? "دور اللعب..." : "منتظر"}</span>
+              <div
+                className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 font-mono text-base text-amber-400"
+                dir="ltr"
+              >
+                {formatTime(isBlackPlayer ? blackTime : whiteTime)}
               </div>
             </div>
-            <div className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 font-mono text-base text-amber-400">
-              {formatTime(whiteTime)}
-            </div>
-          </div>
           </div>
 
-
-          {/* زر إنهاء أو إعادة ضبط اللعبة أثناء اللعب */}
-<div className="m-4 w-[90%]">
+          <div className="m-4 w-[90%]">
             <button
-            className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold border border-slate-700 transition-all text-center cursor-pointer text-sm mt-1"
-            onClick={resetGame}
-          >
-            إنهاء العودة للإعدادات
-          </button>
-</div>
-        </div>
-      )}
-
-      {promotion && (
-        <div className="fixed inset-0 flex justify-center items-center bg-black/70 backdrop-blur-sm z-50 animate-fadeIn">
-          <div className="bg-slate-800 border border-slate-700 p-6 rounded-3xl text-center shadow-2xl max-w-sm w-full mx-4">
-            <p className="mb-6 font-bold text-lg text-slate-200">اختر القطعة للترقية</p>
-            <div className="flex justify-center gap-4 text-4xl sm:text-5xl">
-              <button onClick={() => handlePromotion("queen")} className="p-3 bg-slate-700 hover:bg-slate-600 rounded-2xl transition transform hover:scale-110 cursor-pointer">{getPieceSymbol("queen", promotion.piece.color)}</button>
-              <button onClick={() => handlePromotion("rook")} className="p-3 bg-slate-700 hover:bg-slate-600 rounded-2xl transition transform hover:scale-110 cursor-pointer">{getPieceSymbol("rook", promotion.piece.color)}</button>
-              <button onClick={() => handlePromotion("bishop")} className="p-3 bg-slate-700 hover:bg-slate-600 rounded-2xl transition transform hover:scale-110 cursor-pointer">{getPieceSymbol("bishop", promotion.piece.color)}</button>
-              <button onClick={() => handlePromotion("knight")} className="p-3 bg-slate-700 hover:bg-slate-600 rounded-2xl transition transform hover:scale-110 cursor-pointer">{getPieceSymbol("knight", promotion.piece.color)}</button>
-            </div>
+              type="button"
+              className="w-full py-2.5 px-4 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-red-400 font-bold border border-red-500/40 transition-all text-center cursor-pointer text-sm mt-1"
+              onClick={handleLeaveRoom}
+            >
+              انسحاب
+            </button>
           </div>
         </div>
       )}
 
+      {/* نافذة الترقية */}
+      {promotion &&
+        (() => {
+          const piece = promotion.piece;
+          return (
+            <div className="fixed inset-0 flex justify-center items-center bg-black/70 backdrop-blur-sm z-50 animate-fadeIn">
+              <div className="bg-slate-800 border border-slate-700 p-6 rounded-3xl text-center shadow-2xl max-w-sm w-full mx-4">
+                <p className="mb-6 font-bold text-lg text-slate-200">
+                  اختر القطعة للترقية
+                </p>
+                <div className="flex justify-center gap-4 text-4xl sm:text-5xl">
+                  <button
+                    type="button"
+                    onClick={() => handlePromotion("queen")}
+                    className="p-3 bg-slate-700 hover:bg-slate-600 rounded-2xl transition transform hover:scale-110 cursor-pointer flex items-center justify-center w-16 h-16"
+                  >
+                    <img
+                      src={getPieceSymbol("queen", piece.color)}
+                      alt="queen"
+                      className="w-4/5 h-4/5 object-contain select-none pointer-events-none"
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePromotion("rook")}
+                    className="p-3 bg-slate-700 hover:bg-slate-600 rounded-2xl transition transform hover:scale-110 cursor-pointer flex items-center justify-center w-16 h-16"
+                  >
+                    <img
+                      src={getPieceSymbol("rook", piece.color)}
+                      alt="rook"
+                      className="w-4/5 h-4/5 object-contain select-none pointer-events-none"
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePromotion("bishop")}
+                    className="p-3 bg-slate-700 hover:bg-slate-600 rounded-2xl transition transform hover:scale-110 cursor-pointer flex items-center justify-center w-16 h-16"
+                  >
+                    <img
+                      src={getPieceSymbol("bishop", piece.color)}
+                      alt="bishop"
+                      className="w-4/5 h-4/5 object-contain select-none pointer-events-none"
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePromotion("knight")}
+                    className="p-3 bg-slate-700 hover:bg-slate-600 rounded-2xl transition transform hover:scale-110 cursor-pointer flex items-center justify-center w-16 h-16"
+                  >
+                    <img
+                      src={getPieceSymbol("knight", piece.color)}
+                      alt="knight"
+                      className="w-4/5 h-4/5 object-contain select-none pointer-events-none"
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* نافذة الفوز */}
       {showWinModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-50 animate-fadeIn">
           <div className="w-[90%] sm:w-[400px] bg-slate-800 border border-slate-700 rounded-3xl p-6 sm:p-8 flex flex-col items-center gap-5 text-center shadow-2xl">
@@ -692,13 +563,17 @@ export default function Homepage() {
               🏆
             </div>
             <div>
-              <h3 className="text-2xl font-black text-slate-100">كش مات (Checkmate)!</h3>
+              <h3 className="text-2xl font-black text-slate-100">
+                كش مات (Checkmate)!
+              </h3>
               <p className="text-base text-amber-400 font-semibold mt-1">
-                {win === "white" ? "اللاعب الأبيض" : "اللاعب الأسود"} يفوز باللعبة!
+                {win === "white" ? "اللاعب الأبيض" : "اللاعب الأسود"} يفوز
+                باللعبة!
               </p>
             </div>
             <button
-              className="w-full py-3 bg-linear-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-2xl shadow-lg transition transform active:scale-95 cursor-pointer"
+              type="button"
+              className="w-full py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-2xl shadow-lg transition transform active:scale-95 cursor-pointer"
               onClick={resetGame}
             >
               العب مرة أخرى
@@ -706,7 +581,6 @@ export default function Homepage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
