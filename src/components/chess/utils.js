@@ -4,7 +4,7 @@ import { initialBoard, letters, numbers } from "./constants";
 import { getValidMoves } from "./moves";
 
 const SOCKET_URL =
-  import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
+  import.meta.env.VITE_SOCKET_URL || "https://chess-backend-production-0e62.up.railway.app";
 
 export const getPieceSymbol = (type, color) => {
   const pieceSVGs = {
