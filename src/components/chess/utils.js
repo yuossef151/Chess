@@ -162,9 +162,11 @@ export function useChessGame() {
     return () => clearInterval(timer);
   }, [isGameStarted, turn, showWinModal]);
 
-  const createRoom = () => {
-    socketRef.current.emit("create-room");
-  };
+const createRoom = () => {
+  console.log("socketRef.current:", socketRef.current);
+  console.log("connected?:", socketRef.current?.connected);
+  socketRef.current.emit("create-room");
+};
 
   const joinRoom = (code) => {
     return new Promise((resolve) => {

@@ -138,13 +138,16 @@ export default function Homepage() {
                   <span className="text-xs text-slate-400">
                     أو أنشئ غرفة جديدة:
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleCreateRoomClick}
-                    className="py-2 px-4 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 text-xs font-bold rounded-xl transition cursor-pointer"
-                  >
-                    إنشاء كود جديد
-                  </button>
+<button
+  type="button"
+  onClick={() => {
+    console.log("BUTTON CLICKED!!!");
+    handleCreateRoomClick();
+  }}
+  className="py-2 px-4 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 text-xs font-bold rounded-xl transition cursor-pointer"
+>
+  إنشاء كود جديد
+</button>
                 </div>
               </div>
             ) : (
